@@ -1,0 +1,2 @@
+
+#define VERACRYPT_SUPPORT 1

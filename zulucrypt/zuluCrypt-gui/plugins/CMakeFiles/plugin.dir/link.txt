@@ -1,0 +1,2 @@
+/usr/bin/ar qc libplugin.a  CMakeFiles/plugin.dir/moc_mainwindow.cpp.o CMakeFiles/plugin.dir/mainwindow.cpp.o
+/usr/bin/ranlib libplugin.a

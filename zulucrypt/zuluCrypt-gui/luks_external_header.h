@@ -1,0 +1,2 @@
+
+#define LUKS_EXTERNAL_HEADER 1

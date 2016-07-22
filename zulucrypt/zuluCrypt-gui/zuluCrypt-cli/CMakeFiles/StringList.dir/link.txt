@@ -1,0 +1,2 @@
+/usr/bin/ar qc libStringList.a  CMakeFiles/StringList.dir/utility/string/StringList.c.o
+/usr/bin/ranlib libStringList.a

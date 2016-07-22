@@ -1,0 +1,11 @@
+prefix=/usr
+exec_prefix=/usr
+libdir=/usr/lib/x86_64-linux-gnu
+includedir=/usr/include
+
+Name: libzuluCrypt
+Description: a zuluCrypt library,a front end to cryptsetup
+Version: 1.2.0
+Libs: -L/usr/lib/x86_64-linux-gnu -lcryptsetup -lzuluCrypt -lzuluCrypt-exe -lzuluCryptPluginManager -lblkid -lmount  -L -L/usr/lib/x86_64-linux-gnu -L/lib
+Cflags: -I/usr/include
+

@@ -1,0 +1,44 @@
+
+version 1.0
+
+zuluCrypt-cli
+--open, close, create volumes and check for info of opened ones. - DONE
+
+zuluCrypt
+--open and close volumes and and check for info of opened ones.  - DONE
+
+version 2.0
+-- add support to managing luks keys in the cli and GUI.         - DONE
+
+version 3.0
+zuluCrypt
+-- add support for creation of volumes                           - DONE
+
+zuluCrypt-cli
+-- see if it is possible to safely create volumes resising in "/dev" - DONE
+
+version 4.0
+-- host UI blocking code to threads to remove/minimize UI freezes - DONE
+-- allow a user to select what random number generator to use       - DONE
+-- transition away from using cryptsetup on the cli to using the library - DONE
+-- Allow a user to select what font size and type to use             - DONE
+-- add support for favorite volumes	           		- DONE
+-- warn on attempt to delete a key when there is only one key left - DONE
+-- refuse to attemp tp add more keys when key slots are full.	- DONE
+-- implement tray icon to minimize to tray 		- DONE
+-- provide a complete docs in a header file and associated shared and static library
+   for others to use                                      - DONE
+-- include partitions in /etc/crypttab in a list of system partitions. - DONE
+-- use cmake for building and installation.             - DONE
+
+version 4.3.1
+-- This version marks the status change to "maintanance mode". The project to the most partitions
+   will be fixing bugs when found as it can now do all of what it is meant to do.
+-- New featues will be added in a form of transitions if people start submitting them.
+
+4.0 going up
+-- just maintainig  the tool,all features are in.
+
+X.Y
+-- add a plugin to retrieve keys from smart cards
+-- add mtp based devices support to zuluMount

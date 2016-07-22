@@ -1,0 +1,2 @@
+/usr/bin/ar qc libsecretService.a  CMakeFiles/secretService.dir/__/secret_service.c.o
+/usr/bin/ranlib libsecretService.a

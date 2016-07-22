@@ -1,0 +1,2 @@
+
+#define SUPPORT_WHIRLPOOL 1

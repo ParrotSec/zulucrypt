@@ -1,0 +1,1 @@
+/usr/bin/cc    -pie CMakeFiles/zuluCrypt-testKey.dir/__/plugins/test/zuluCrypt-testKey.c.o  -o zuluCrypt-testKey -rdynamic libzuluCryptPluginManager.so.1.0.0 -lblkid libSocket.a libProcess.a -pthread libString.a -Wl,-rpath,/home/palinuro/Desktop/zulu/zulucrypt-5.0.0+parrot0/zuluCrypt-gui/zuluCrypt-cli: 
