@@ -141,19 +141,16 @@ if( USE_POLKIT )
 file( WRITE ${PROJECT_BINARY_DIR}/zuluCrypt.desktop
 
 "[Desktop Entry]
-Comment[en_US]=
 Comment=
 Exec=${CMAKE_INSTALL_FULL_BINDIR}/zuluCrypt-gui.pkexec -d %U
-GenericName[en_US]=Encrypted volumes manager
 GenericName=Encrypted volumes manager
 Icon=zuluCrypt
-Name[en_US]=ZuluCrypt
 Name=ZuluCrypt
 NoDisplay=false
 StartupNotify=true
 Terminal=false
 Type=Application
-Categories=Security;Utility;Qt;X-MandrivaLinux-System-FileTools;\n")
+Categories=Security;Utility;Qt;X-MandrivaLinux-System-FileTools;cryptography;\n")
 
 file( WRITE ${PROJECT_BINARY_DIR}/zuluCrypt-gui.pkexec
 "#!/bin/bash
@@ -168,18 +165,15 @@ else()
 file( WRITE ${PROJECT_BINARY_DIR}/zuluCrypt.desktop
 
 "[Desktop Entry]
-Comment[en_US]=
 Comment=
 Exec=${CMAKE_INSTALL_FULL_BINDIR}/zuluCrypt-gui -d %U
-GenericName[en_US]=Encrypted volumes manager
 GenericName=Encrypted volumes manager
 Icon=zuluCrypt
-Name[en_US]=ZuluCrypt
 Name=ZuluCrypt
 NoDisplay=false
 StartupNotify=true
 Terminal=false
 Type=Application
-Categories=Security;Utility;Qt;X-MandrivaLinux-System-FileTools;\n")
+Categories=Security;Utility;Qt;X-MandrivaLinux-System-FileTools;cryptography;\n")
 
 endif()

@@ -1,3 +1,9 @@
+zulucrypt (5.0.2-0parrot1) testing; urgency=medium
+
+  * Fix launcher categories
+
+ -- Lorenzo "Palinuro" Faletra <palinuro@parrotsec.org>  Sun, 18 Dec 2016 21:35:35 +0100
+
 zulucrypt (5.0.2-0parrot0) testing; urgency=medium
 
   * Import new upstream release
