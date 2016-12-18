@@ -1,1 +1,0 @@
-/usr/bin/cc    -pie CMakeFiles/keyring.dir/__/plugins/keyring/keyring.c.o  -o keyring -rdynamic libzuluCryptPluginManager.so.1.0.0 -lblkid -lsecret-1 -lgio-2.0 -lgobject-2.0 -lglib-2.0 libSocket.a libProcess.a -pthread libString.a -Wl,-rpath,/home/palinuro/Desktop/zulu/zulucrypt-5.0.0+parrot0/zuluCrypt-gui/zuluCrypt-cli: 

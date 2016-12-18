@@ -37,7 +37,8 @@
 
 #define COMMENT "-zuluCrypt_Comment_ID"
 
-walletconfig::walletconfig( QWidget * parent ) : QDialog( parent ),m_ui( new Ui::walletconfig )
+walletconfig::walletconfig( QWidget * parent ) :
+	QDialog( parent ),m_ui( new Ui::walletconfig )
 {
 	m_ui->setupUi( this ) ;
 
@@ -66,10 +67,21 @@ bool walletconfig::eventFilter( QObject * watched,QEvent * event )
 
 void walletconfig::currentItemChanged( QTableWidgetItem * current,QTableWidgetItem * previous )
 {
-	tablewidget::selectTableRow( current,previous ) ;
+	tablewidget::selectRow( current,previous ) ;
 }
 
 void walletconfig::itemClicked( QTableWidgetItem * item )
+{
+	Q_UNUSED( item ) ;
+
+	QMenu m ;
+
+	m.addAction( tr( "Delete Entry" ),this,SLOT( pbDelete() ) ) ;
+
+	m.exec( QCursor::pos() ) ;
+}
+
+void walletconfig::itemClicked_0( QTableWidgetItem * item )
 {
 	this->disableAll() ;
 
@@ -90,7 +102,7 @@ void walletconfig::itemClicked( QTableWidgetItem * item )
 
 		} ).then( [ this ](){
 
-			tablewidget::deleteRowFromTable( m_ui->tableWidget,m_row ) ;
+			tablewidget::deleteRow( m_ui->tableWidget,m_row ) ;
 			this->enableAll() ;
 			m_ui->tableWidget->setFocus() ;
 		} ) ;
@@ -102,7 +114,12 @@ void walletconfig::itemClicked( QTableWidgetItem * item )
 
 void walletconfig::pbDelete()
 {
-	this->itemClicked( m_ui->tableWidget->currentItem() ) ;
+	auto item = m_ui->tableWidget->currentItem() ;
+
+	if( item ){
+
+		this->itemClicked_0( item ) ;
+	}
 }
 
 void walletconfig::pbClose()
@@ -124,9 +141,9 @@ void walletconfig::pbAdd()
 
 			auto _add = [ this ](){
 
-				if( m_wallet->addKey( m_volumeID,m_key.toLatin1() ) ){
+				if( m_wallet->addKey( m_volumeID,m_key ) ){
 
-					if( m_wallet->addKey( m_volumeID + COMMENT,m_comment.toLatin1() ) ){
+					if( m_wallet->addKey( m_volumeID + COMMENT,m_comment ) ){
 
 						return true ;
 					}else{
@@ -155,7 +172,7 @@ void walletconfig::pbAdd()
 
 			if( success ){
 
-				tablewidget::addRowToTable( m_ui->tableWidget,{ m_volumeID,m_comment } ) ;
+				tablewidget::addRow( m_ui->tableWidget,{ m_volumeID,m_comment } ) ;
 			}else{
 				DialogMsg msg( this ) ;
 				msg.ShowUIOK( tr( "ERROR!" ),tr( "Failed To Add the Key In The Wallet." ) ) ;
@@ -171,79 +188,90 @@ void walletconfig::pbAdd()
 	} ) ;
 }
 
-void walletconfig::ShowUI( LxQt::Wallet::walletBackEnd backEnd )
+void walletconfig::ShowUI( secrets::wallet&& wallet )
 {
 	this->disableAll() ;
-	this->show() ;
 
-	m_wallet = LxQt::Wallet::getWalletBackend( backEnd ) ;
-	m_wallet->setInterfaceObject( this ) ;
+	m_wallet = std::move( wallet ) ;
 
-	if( backEnd == LxQt::Wallet::kwalletBackEnd ){
+	if( m_wallet->opened() ){
 
-		m_wallet->open( "default",utility::applicationName() ) ;
+		this->accessWallet() ;
 	}else{
-		m_wallet->open( utility::walletName(),utility::applicationName() ) ;
+		m_wallet->open( [ & ]()->QString{
+
+			if( m_wallet->backEnd() == LXQt::Wallet::BackEnd::kwallet ){
+
+				return "default" ;
+			}else{
+				return utility::walletName() ;
+			}
+
+		}(),utility::applicationName(),[ this ]( bool opened ){
+
+			if( opened ){
+
+				this->accessWallet() ;
+			}else{
+				this->HideUI() ;
+			}
+		} ) ;
 	}
 }
 
-void walletconfig::walletIsOpen( bool opened )
+void walletconfig::accessWallet()
 {
-	using walletKeys = QVector<LxQt::Wallet::walletKeyValues> ;
+	using walletKeys = decltype( m_wallet->readAllKeyValues() ) ;
 
-	if( opened ){
+	this->show() ;
 
-		Task::run<walletKeys>( [ this ](){
+	Task::run<walletKeys>( [ this ](){
 
-			return m_wallet->readAllKeyValues() ;
+		return m_wallet->readAllKeyValues() ;
 
-		} ).then( [ this ]( const walletKeys& keys ){
+	} ).then( [ this ]( const walletKeys& keys ){
 
-			if( !keys.empty() ){
+		auto _getEntry = [&]( const QString& acc )-> const QByteArray& {
 
-				auto _getEntry = [&]( const QString& acc )-> const QByteArray& {
+			for( const auto& it : keys ){
 
-					for( const auto& it : keys ){
+				if( it.first == acc ){
 
-						if( it.getKey() == acc ){
-
-							return it.getValue() ;
-						}
-					}
-
-					static QByteArray ShouldNotGetHere ;
-					return ShouldNotGetHere ;
-				} ;
-
-				/*
-				 * each volume gets two entries in wallet:
-				 * First one in the form of  : entry         -> entry password
-				 * Second one in the form of : entry-COMMENT -> comment
-				 *
-				 * This allows to store a a volume volume,a comment about the volume and the passphrase.
-				 *
-				 */
-
-				auto table = m_ui->tableWidget ;
-
-				for( const auto& it : keys ){
-
-					const auto& acc = it.getKey() ;
-
-					if( !acc.endsWith( COMMENT ) ){
-
-						tablewidget::addRowToTable( table,{ acc,_getEntry( acc + COMMENT ) } ) ;
-					}
+					return it.second ;
 				}
-			} ;
+			}
 
-			this->enableAll() ;
-			m_ui->tableWidget->setFocus() ;
-		} ) ;
-	}else{
-		emit couldNotOpenWallet() ;
-		this->HideUI() ;
-	}
+			static QByteArray ShouldNotGetHere ;
+			return ShouldNotGetHere ;
+		} ;
+
+		/*
+		 * each volume gets two entries in wallet:
+		 * First one in the form of  : entry         -> entry password
+		 * Second one in the form of : entry-COMMENT -> comment
+		 *
+		 * This allows to store a a volume volume,a comment about the volume
+		 * and the passphrase.
+		 *
+		 */
+
+		auto table = m_ui->tableWidget ;
+
+		for( const auto& it : keys ){
+
+			const auto& acc = it.first ;
+
+			if( !acc.endsWith( COMMENT ) ){
+
+				const auto& e = _getEntry( acc + COMMENT ) ;
+
+				tablewidget::addRow( table,{ acc,e } ) ;
+			}
+		}
+
+		this->enableAll() ;
+		m_ui->tableWidget->setFocus() ;
+	} ) ;
 }
 
 void walletconfig::enableAll()
@@ -278,6 +306,5 @@ void walletconfig::closeEvent( QCloseEvent * e )
 
 walletconfig::~walletconfig()
 {
-	m_wallet->deleteLater() ;
 	delete m_ui ;
 }

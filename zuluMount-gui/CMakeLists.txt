@@ -39,11 +39,13 @@ set(SRC 	main.cpp
 		monitor_mountinfo.cpp
 		deviceoffset.cpp
 		mountoptions.cpp
-		volumeentryproperties.cpp
+		siritask.cpp
+		volumeproperty.cpp
 		../zuluCrypt-gui/tcrypt.cpp
 		veracryptpimdialog.cpp
 		../zuluCrypt-gui/favorites.cpp
 		../zuluCrypt-gui/openvolume.cpp
+		../zuluCrypt-gui/secrets.cpp
 )
 
 if( QT5 )
@@ -62,7 +64,7 @@ if( QT5 )
 
 	add_executable( zuluMount-gui ${MOC} ${UI} ${SRC} ${TRAY_RC_SRCS} )
 
-	TARGET_LINK_LIBRARIES( zuluMount-gui sharedObject lxqtwallet  ${Qt5Widgets_LIBRARIES} ${Qt5Core_LIBRARIES} ${Qt5Widgets_LIBRARIES} ${Qt5Network_LIBRARIES} ${blkid} zuluCryptPluginManager )
+	TARGET_LINK_LIBRARIES( zuluMount-gui sharedObject lxqt-wallet  ${Qt5Widgets_LIBRARIES} ${Qt5Core_LIBRARIES} ${Qt5Widgets_LIBRARIES} ${Qt5Network_LIBRARIES} ${blkid} zuluCryptPluginManager )
 
 	set_target_properties( zuluMount-gui PROPERTIES INSTALL_RPATH "${CMAKE_INSTALL_FULL_LIBDIR}" )
 else()
@@ -83,7 +85,7 @@ else()
 
 	add_executable( zuluMount-gui ${MOC} ${UI} ${SRC} ${TRAY_RC_SRCS} )
 
-	TARGET_LINK_LIBRARIES( zuluMount-gui sharedObject lxqtwallet ${QT_LIBRARIES} ${blkid} zuluCryptPluginManager )
+	TARGET_LINK_LIBRARIES( zuluMount-gui sharedObject lxqt-wallet ${QT_LIBRARIES} ${blkid} zuluCryptPluginManager )
 
 	set_target_properties( zuluMount-gui PROPERTIES INSTALL_RPATH "${CMAKE_INSTALL_FULL_LIBDIR}" )
 endif()
@@ -100,10 +102,45 @@ PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_
 
 install( FILES zuluMount.png DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/48x48/apps/ )
 install( FILES zuluMount.png DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/pixmaps )
-
+install( FILES zuluMount.nicolas.png DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/48x48/apps/ )
+install( FILES zuluMount.nicolas.png DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/pixmaps )
+install( FILES zuluMount.papirus.png DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/48x48/apps/ )
+install( FILES zuluMount.papirus.png DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/pixmaps )
+install( FILES zuluMount.papirus.dark.png DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/48x48/apps/ )
+install( FILES zuluMount.papirus.dark.png DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/pixmaps )
 #install ( FILES zuluMount.png DESTINATION share/icons/hicolor/32x32/apps )
 
 # desktop file section
+
+if( USE_POLKIT )
+
+file( WRITE ${PROJECT_BINARY_DIR}/zuluMount.desktop
+
+"[Desktop Entry]
+Comment[en_US]=
+Comment=
+Exec=${CMAKE_INSTALL_FULL_BINDIR}/zuluMount-gui.pkexec -d %U
+GenericName[en_US]=Encrypted volume and Partition mounter
+GenericName=Encrypted volumes and partition mounter
+Icon=zuluMount
+Name[en_US]=ZuluMount
+Name=ZuluMount
+NoDisplay=false
+StartupNotify=true
+Terminal=false
+Type=Application
+Categories=Security;Utility;Qt;X-MandrivaLinux-System-FileTools;\n")
+
+file( WRITE ${PROJECT_BINARY_DIR}/zuluMount-gui.pkexec
+"#!/bin/bash
+pkexec ${CMAKE_INSTALL_FULL_BINDIR}/zuluMount-gui -K $UID $*
+")
+
+install ( FILES ${PROJECT_BINARY_DIR}/zuluMount-gui.pkexec
+          DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
+          PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE )
+else()
+
 file( WRITE ${PROJECT_BINARY_DIR}/zuluMount.desktop
 
 "[Desktop Entry]
@@ -112,17 +149,12 @@ Comment=
 Exec=${CMAKE_INSTALL_FULL_BINDIR}/zuluMount-gui -d %U
 GenericName[en_US]=Encrypted volume and Partition mounter
 GenericName=Encrypted volumes and partition mounter
-Icon=zuluMount.png
-MimeType=
+Icon=zuluMount
 Name[en_US]=ZuluMount
 Name=ZuluMount
 NoDisplay=false
-Path=
 StartupNotify=true
 Terminal=false
 Type=Application
-X-DBUS-ServiceName=
-X-DBUS-StartupType=
-X-KDE-SubstituteUID=false
-X-KDE-Username=
-Categories=Security;Utility;Qt;X-MandrivaLinux-System-FileTools;12-02-digital-anti-forensics;cryptography;\n")
+Categories=Security;Utility;Qt;X-MandrivaLinux-System-FileTools;\n")
+endif()

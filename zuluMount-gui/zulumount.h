@@ -26,7 +26,8 @@
 #include <QSystemTrayIcon>
 #include <QVector>
 
-#include "volumeentryproperties.h"
+#include "volumeproperty.h"
+#include "../zuluCrypt-gui/secrets.h"
 
 class QCloseEvent ;
 class QAction ;
@@ -52,6 +53,8 @@ public slots:
 	void raiseWindow( void ) ;
 	void raiseWindow( QString ) ;
 private slots:
+	void showTrayGUI( void ) ;
+	void cryfsVolumeProperties( void ) ;
 	void closeApplication( void ) ;
 	void unlockCryptFs( void ) ;
 	void showVisibleVolumeList( void ) ;
@@ -59,13 +62,13 @@ private slots:
 	void removeVolumeFromHiddenVolumeList( QAction * ) ;
 	void removeVolumeFromVisibleVolumeList( QAction * ) ;
 	void startGUI( void ) ;
-	void volumeMiniProperties( bool,volumeEntryProperties * ) ;
-	void volumeMiniProperties( volumeEntryProperties * ) ;
-	void volumeMiniProperties_0( volumeEntryProperties * ) ;
-	void showMoungDialog( const volumeEntryProperties& ) ;
+	void volumeMiniProperties( bool,volumeProperty * ) ;
+	void volumeMiniProperties( volumeProperty * ) ;
+	void volumeMiniProperties_0( volumeProperty * ) ;
+	void showMoungDialog( const volumeProperty& ) ;
 	void showMoungDialog( const QString&,const QString& = QString() ) ;
-	void autoMountVolume( volumeEntryProperties * ) ;
-	void mount( const volumeEntryProperties& ) ;
+	void autoMountVolume( volumeProperty * ) ;
+	void mount( const volumeProperty& ) ;
 	void defaultButton( void ) ;
 	void volumeProperties( void ) ;
 	void itemClicked( QTableWidgetItem * ) ;
@@ -86,7 +89,7 @@ private slots:
 	void volumeRemoved( QString ) ;
 	void removeVolume( QString ) ;
 	void addEntryToTable( bool,const QStringList& ) ;
-	void addEntryToTable( bool,const volumeEntryProperties& ) ;
+	void addEntryToTable( bool,const volumeProperty& ) ;
 	void quitApplication( void ) ;
 	void autoMountToggled( bool ) ;
 	void autoOpenFolderOnMount( bool ) ;
@@ -98,35 +101,39 @@ private slots:
 	void updateCheck( void ) ;
 	void languageMenu( QAction * ac ) ;
 private:
+	void setIcons( void ) ;
 	bool errorNotFound( int ) ;
 	QString resolveFavoriteMountPoint( const QString& ) ;
 	void autoUpdateCheck( void ) ;
-	void updateVolumeList( const QVector< volumeEntryProperties >& ) ;
+	void updateVolumeList( const QVector< volumeProperty >& ) ;
 	void openMountPoint( const QString& ) ;
 	QFont getSystemVolumeFont( void ) ;
 	void setLocalizationLanguage( bool ) ;
 	bool autoOpenFolderOnMount( void ) ;
 	void dragEnterEvent( QDragEnterEvent * ) ;
-	void removeDisappearedEntries( const QVector< volumeEntryProperties >& ) ;
+	void removeDisappearedEntries( const QVector< volumeProperty >& ) ;
 	void dropEvent( QDropEvent * ) ;
 	void showContextMenu( QTableWidgetItem *,bool ) ;
 	void startAutoMonitor( void ) ;
 	bool autoMount( void ) ;
-	void updateList( const volumeEntryProperties& ) ;
+	void updateList( const volumeProperty& ) ;
 
 	Ui::zuluMount * m_ui = nullptr ;
 	QString m_folderOpener ;
+
 	void disableAll( void ) ;
 	void closeEvent( QCloseEvent * e ) ;
 	void setUpFont( void ) ;
 	void setUpShortCuts( void ) ;
 	void setUpApp( const QString& ) ;
+
 	QAction * m_autoMountAction = nullptr ;
 	QMenu * m_favorite_menu = nullptr ;
 	QMenu * m_hidden_volume_menu = nullptr ;
 	QMenu * m_not_hidden_volume_menu = nullptr ;
+	QMenu * m_language_menu = nullptr ;
 
-	QAction * m_languageAction ;
+	secrets m_secrets ;
 
 	bool m_startHidden ;
 	bool m_autoMount ;
@@ -135,6 +142,9 @@ private:
 	bool m_removeAllVolumes = false ;
 	QString m_env ;
 	QString m_powerOff ;
+
+	QVector< std::pair< QAction *,const char * > > m_actionPair ;
+	QVector< std::pair< QMenu *,const char * > > m_menuPair ;
 
 	QSystemTrayIcon m_trayIcon ;
 

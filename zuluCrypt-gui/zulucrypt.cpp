@@ -65,7 +65,6 @@
 #include "tablewidget.h"
 #include "utility.h"
 #include "task.h"
-#include "lxqt_wallet/frontend/lxqt_wallet.h"
 #include "contactinfo.h"
 
 #include "veracrypt_support.h"
@@ -85,15 +84,17 @@ void zuluCrypt::setLocalizationLanguage( bool translate )
 {
 	if( translate ){
 
-		utility::setLocalizationLanguage( translate,this,nullptr,"zuluCrypt-gui" ) ;
+		utility::setLocalizationLanguage( translate,nullptr,"zuluCrypt-gui" ) ;
 	}else{
-		utility::setLocalizationLanguage( translate,this,m_ui->actionSelect_Language,"zuluCrypt-gui" ) ;
+		utility::setLocalizationLanguage( translate,m_language_menu,"zuluCrypt-gui" ) ;
 	}
 }
 
 void zuluCrypt::languageMenu( QAction * ac )
 {
-	utility::languageMenu( this,m_ui->actionSelect_Language->menu(),ac,"zuluCrypt-gui" ) ;
+	utility::languageMenu( this,m_language_menu,ac,"zuluCrypt-gui" ) ;
+
+	m_ui->retranslateUi( this ) ;
 }
 
 void zuluCrypt::setUpApp( const QString& volume )
@@ -159,7 +160,7 @@ void zuluCrypt::updateVolumeList( QString volume,QString r )
 					z.replace( 2,e.toLower() ) ;
 				}
 
-				tablewidget::addRowToTable( m_ui->tableWidget,z ) ;
+				tablewidget::addRow( m_ui->tableWidget,z ) ;
 			}
 		}
 	}
@@ -175,13 +176,16 @@ void zuluCrypt::updateVolumeList( QString volume,QString r )
 
 void zuluCrypt::initKeyCombo()
 {
-	auto ac = new QAction( this ) ;
-	QList<QKeySequence> keys ;
-	keys.append( Qt::Key_Menu ) ;
-	keys.append( Qt::CTRL + Qt::Key_M ) ;
-	ac->setShortcuts( keys ) ;
-	connect( ac,SIGNAL( triggered() ),this,SLOT( menuKeyPressed() ) ) ;
-	this->addAction( ac ) ;
+	this->addAction( [ this ](){
+
+		auto ac = new QAction( this ) ;
+
+		ac->setShortcuts( { Qt::Key_Menu,Qt::CTRL + Qt::Key_M } ) ;
+
+		connect( ac,SIGNAL( triggered() ),this,SLOT( menuKeyPressed() ) ) ;
+
+		return ac ;
+	}() ) ;
 }
 
 void zuluCrypt::initFont()
@@ -232,6 +236,8 @@ void zuluCrypt::start()
 
 	utility::setUID( utility::cmdArgumentValue( l,"-K","-1" ).toInt() ) ;
 
+	utility::createHomeFolder() ;
+
 	oneinstance::instance( this,"zuluCrypt-gui.socket","raiseWindow",e,[ this,e ]( QObject * instance ){
 
 		this->setUpApp( e ) ;
@@ -243,6 +249,15 @@ void zuluCrypt::start()
 
 void zuluCrypt::initTray()
 {
+	utility::setIconMenu( "zuluCrypt",m_ui->actionSelect_Icons,this,[ this ]( const QString& e ){
+
+		utility::setIcons( "zuluCrypt",e ) ;
+
+		this->setIcons() ;
+	} ) ;
+
+	this->setIcons() ;
+
 	utility::showTrayIcon( m_ui->actionTray_icon,&m_trayIcon ) ;
 }
 
@@ -259,18 +274,15 @@ void zuluCrypt::setupUIElements()
 {
 	m_ui->setupUi( this ) ;
 
-	const auto& icon = utility::getIcon( "zuluCrypt" ) ;
-
-	this->setWindowIcon( icon ) ;
+	m_secrets.setParent( this ) ;
 
 	m_trayIcon.setParent( this ) ;
-
-	m_trayIcon.setIcon( icon ) ;
 
 	auto trayMenu = new QMenu( this ) ;
 
 	trayMenu->setFont( this->font() ) ;
 
+	trayMenu->addAction( tr( "Show/Hide" ),this,SLOT( showTrayGUI() ) ) ;
 	trayMenu->addAction( tr( "Quit" ),this,SLOT( closeApplication() ) ) ;
 
 	m_trayIcon.setContextMenu( trayMenu ) ;
@@ -286,6 +298,15 @@ void zuluCrypt::setupUIElements()
 	table->setColumnWidth( 0,*( e + 4 ) ) ;
 	table->setColumnWidth( 1,*( e + 5 ) ) ;
 	table->setColumnWidth( 2,*( e + 6 ) ) ;
+}
+
+void zuluCrypt::setIcons()
+{
+	const auto& icon = utility::getIcon( "zuluCrypt" ) ;
+
+	m_trayIcon.setIcon( icon ) ;
+
+	this->setWindowIcon( icon ) ;
 }
 
 void zuluCrypt::itemEntered( QTableWidgetItem * item )
@@ -361,13 +382,30 @@ void zuluCrypt::setupConnections()
 		m_ui->actionManage_volumes_in_gnome_wallet->setEnabled( false ) ;
 		m_ui->actionManage_volumes_in_kde_wallet->setEnabled( false ) ;
 	}else{
-		m_ui->actionManage_volumes_in_gnome_wallet->setEnabled( LxQt::Wallet::backEndIsSupported( LxQt::Wallet::secretServiceBackEnd ) ) ;
-		m_ui->actionManage_volumes_in_kde_wallet->setEnabled( LxQt::Wallet::backEndIsSupported( LxQt::Wallet::kwalletBackEnd ) ) ;
+		using wbe = LXQt::Wallet::BackEnd ;
+
+		auto a = LXQt::Wallet::backEndIsSupported( wbe::libsecret ) ;
+		auto b = LXQt::Wallet::backEndIsSupported( wbe::kwallet ) ;
+
+		m_ui->actionManage_volumes_in_gnome_wallet->setEnabled( a ) ;
+		m_ui->actionManage_volumes_in_kde_wallet->setEnabled( b ) ;
 	}
 
 	connect( m_ui->menuOptions,SIGNAL( aboutToShow() ),this,SLOT( optionMenuAboutToShow() ) ) ;
 
 	connect( &m_mountInfo,SIGNAL( gotEvent() ),this,SLOT( updateVolumeList() ) ) ;
+
+	m_language_menu = [ this ](){
+
+		auto m = new QMenu( tr( "Select Language" ),this ) ;
+
+		connect( m,SIGNAL( triggered( QAction * ) ),
+			 this,SLOT( languageMenu( QAction * ) ) ) ;
+
+		m_ui->actionSelect_Language->setMenu( m ) ;
+
+		return m ;
+	}() ;
 
 	m_ui->actionManage_system_partitions->setEnabled( utility::userIsRoot() ) ;
 	m_ui->actionManage_non_system_partitions->setEnabled( utility::userIsRoot() ) ;
@@ -376,6 +414,11 @@ void zuluCrypt::setupConnections()
 	m_ui->actionVeracrypt_container_in_a_partition->setEnabled( true ) ;
 
 	this->setAcceptDrops( true ) ;
+}
+
+void zuluCrypt::showTrayGUI()
+{
+	this->trayClicked( QSystemTrayIcon::Trigger ) ;
 }
 
 void zuluCrypt::autoOpenMountPoint( bool e )
@@ -387,8 +430,11 @@ void zuluCrypt::autoOpenMountPoint( bool e )
 
 void zuluCrypt::optionMenuAboutToShow()
 {
-	auto b = LxQt::Wallet::walletExists( LxQt::Wallet::internalBackEnd,utility::walletName(),utility::applicationName() ) ;
-	m_ui->actionChange_internal_wallet_password->setEnabled( b ) ;
+	auto a = utility::walletName() ;
+	auto b = utility::applicationName() ;
+	auto c = LXQt::Wallet::walletExists( LXQt::Wallet::BackEnd::internal,a,b ) ;
+
+	m_ui->actionChange_internal_wallet_password->setEnabled( c ) ;
 }
 
 void zuluCrypt::updateCheck()
@@ -411,19 +457,24 @@ void zuluCrypt::info()
 	cryptoinfo::instance( this,utility::homePath() + "/.zuluCrypt/doNotshowWarning.option",QString() ) ;
 }
 
+static void _walletconfig( QWidget * widget,secrets& s,LXQt::Wallet::BackEnd e )
+{
+	walletconfig::instance( widget ).ShowUI( s.walletBk( e ) ) ;
+}
+
 void zuluCrypt::manageVolumesInGNOMEWallet()
 {
-	walletconfig::instance( this ).ShowUI( LxQt::Wallet::secretServiceBackEnd ) ;
+	_walletconfig( this,m_secrets,LXQt::Wallet::BackEnd::libsecret ) ;
 }
 
 void zuluCrypt::manageVolumesInInternalWallet()
 {
-	walletconfig::instance( this ).ShowUI( LxQt::Wallet::internalBackEnd ) ;
+	_walletconfig( this,m_secrets,LXQt::Wallet::BackEnd::internal ) ;
 }
 
 void zuluCrypt::manageVolumesInKDEWallet()
 {
-	walletconfig::instance( this ).ShowUI( LxQt::Wallet::kwalletBackEnd ) ;
+	_walletconfig( this,m_secrets,LXQt::Wallet::BackEnd::kwallet ) ;
 }
 
 void zuluCrypt::failedToOpenWallet()
@@ -434,7 +485,10 @@ void zuluCrypt::failedToOpenWallet()
 
 void zuluCrypt::changePassWordOfInternalWallet()
 {
-	changeWalletPassWord::instance( this ) ;
+	auto a = utility::walletName() ;
+	auto b = utility::applicationName() ;
+
+	m_secrets.changeInternalWalletPassword( a,b ) ;
 }
 
 void zuluCrypt::permissionExplanation()
@@ -478,7 +532,7 @@ void zuluCrypt::ShowManageNonSystemPartitions()
 
 void zuluCrypt::currentItemChanged( QTableWidgetItem * current,QTableWidgetItem * previous )
 {
-	tablewidget::selectTableRow( current,previous ) ;
+	tablewidget::selectRow( current,previous ) ;
 
 	if( m_ui->tableWidget->rowCount() > 12 ){
 
@@ -548,7 +602,7 @@ void zuluCrypt::closeAll( QTableWidgetItem * item,int st )
 
 void zuluCrypt::removeRowFromTable( int x )
 {
-	tablewidget::deleteRowFromTable( m_ui->tableWidget,x ) ;
+	tablewidget::deleteRow( m_ui->tableWidget,x ) ;
 }
 
 void zuluCrypt::minimizeToTray()
@@ -688,6 +742,7 @@ void zuluCrypt::setUserFont( QFont Font )
 	m_ui->actionContact_Info->setFont( Font ) ;
 	m_ui->actionSelect_Language->setFont( Font ) ;
 	m_ui->actionAuto_Open_Mount_Point->setFont( Font ) ;
+	m_ui->actionSelect_Icons->setFont( Font ) ;
 }
 
 void zuluCrypt::aboutMenuOption( void )
@@ -706,7 +761,7 @@ Having a backup of the volume header is strongly advised because it is the only 
 again after the header is restored if the header on the volume get corrupted.\n\n" ) ;
 
 	DialogMsg m( this ) ;
-	m.ShowUIInfo( tr( "Important Information On Volume Header Backup" ),msg ) ;
+	m.ShowUIInfo( tr( "Important Information On Volume Header Backup" ),false,msg ) ;
 }
 
 void zuluCrypt::volume_property()
@@ -714,6 +769,12 @@ void zuluCrypt::volume_property()
 	m_ui->tableWidget->setEnabled( false ) ;
 
 	auto item = m_ui->tableWidget->currentItem() ;
+
+	if( item == nullptr ){
+
+		return ;
+	}
+
 	auto x = m_ui->tableWidget->item( item->row(),0 )->text() ;
 
 	x.replace( "\"","\"\"\"" ) ;
@@ -762,7 +823,12 @@ void zuluCrypt::favClicked( QAction * ac )
 
 		if( e.size() > 1 ){
 
-			this->ShowPasswordDialog( e.at( 0 ),e.at( 1 ) ) ;
+			const auto& first = e.first() ;
+
+			if( !utility::pathPointsToAFolder( first ) ){
+
+				this->ShowPasswordDialog( first,e.at( 1 ) ) ;
+			}
 		}
 	} ;
 
@@ -798,13 +864,23 @@ void zuluCrypt::addToFavorite()
 
 void zuluCrypt::menuKeyPressed()
 {
-	this->itemClicked( m_ui->tableWidget->currentItem(),false ) ;
+	auto table = m_ui->tableWidget ;
+
+	if( table->rowCount() > 0 ){
+
+		this->itemClicked( m_ui->tableWidget->currentItem(),false ) ;
+	}
 }
 
 void zuluCrypt::openFolder()
 {
-	auto item = m_ui->tableWidget->currentItem() ;
-	this->openFolder( m_ui->tableWidget->item( item->row(),1 )->text() ) ;
+	auto table = m_ui->tableWidget ;
+
+	if( table->rowCount() > 0 ){
+
+		auto item = table->currentItem() ;
+		this->openFolder( table->item( item->row(),1 )->text() ) ;
+	}
 }
 
 void zuluCrypt::openSharedFolder()
@@ -825,7 +901,21 @@ void zuluCrypt::openpdf()
 	auto x = tr( "WARNING!" ) ;
 	auto y = tr( "Failed to open zuluCrypt.pdf,make sure your system can open pdf files using \"%1\" tool and try again" ).arg( m_openPath ) ;
 
-	utility::openPath( PDF_PATH,m_openPath,m_env,this,x,y ) ;
+	QString e = PDF_PATH ;
+
+	if( utility::pathExists( e ) ){
+
+		utility::openPath( e,m_openPath,m_env,this,x,y ) ;
+	}else{
+		e += ".gz" ;
+
+		if( utility::pathExists( e ) ){
+
+			utility::openPath( e,m_openPath,m_env,this,x,y ) ;
+		}else{
+			utility::openPath( PDF_PATH,m_openPath,m_env,this,x,y ) ;
+		}
+	}
 }
 
 void zuluCrypt::itemClicked( QTableWidgetItem * it )
@@ -836,8 +926,18 @@ void zuluCrypt::itemClicked( QTableWidgetItem * it )
 void zuluCrypt::itemClicked( QTableWidgetItem * item,bool clicked )
 {
 	QMenu m ;
+
 	m.setFont( this->font() ) ;
-	connect( m.addAction( tr( "Close" ) ),SIGNAL( triggered() ),this,SLOT( close() ) ) ;
+
+	if( m_sharedMountPoint.isEmpty() ){
+
+		connect( m.addAction( tr( "Open Folder" ) ) ,SIGNAL( triggered() ),this,SLOT( openFolder() ) ) ;
+	}else{
+		connect( m.addAction( tr( "Open Private Folder" ) ),SIGNAL( triggered() ),
+			 this,SLOT( openFolder() ) ) ;
+		connect( m.addAction( tr( "Open Shared Folder" ) ),SIGNAL( triggered() ),
+			 this,SLOT( openSharedFolder() ) ) ;
+	}
 
 	m.addSeparator() ;
 
@@ -849,15 +949,6 @@ void zuluCrypt::itemClicked( QTableWidgetItem * item,bool clicked )
 
 	m_sharedMountPoint = utility::sharedMountPointPath( m_point ) ;
 
-	if( m_sharedMountPoint.isEmpty() ){
-
-		connect( m.addAction( tr( "Open Folder" ) ) ,SIGNAL( triggered() ),this,SLOT( openFolder() ) ) ;
-	}else{
-		connect( m.addAction( tr( "Open Private Folder" ) ),SIGNAL( triggered() ),
-			 this,SLOT( openFolder() ) ) ;
-		connect( m.addAction( tr( "Open Shared Folder" ) ),SIGNAL( triggered() ),
-			 this,SLOT( openSharedFolder() ) ) ;
-	}
 
 	m.addSeparator() ;
 
@@ -895,6 +986,11 @@ void zuluCrypt::itemClicked( QTableWidgetItem * item,bool clicked )
 		ac->setEnabled( true ) ;
 		ac->connect( ac,SIGNAL( triggered() ),this,SLOT( addToFavorite() ) ) ;
 	}
+
+	m.addSeparator() ;
+
+	connect( m.addAction( tr( "Close" ) ),SIGNAL( triggered() ),this,SLOT( close() ) ) ;
+
 	if( clicked ){
 
 		m.exec( QCursor::pos() ) ;
@@ -970,7 +1066,6 @@ void zuluCrypt::close()
 		//utility::Task::waitForOneSecond() ; //for UI effect
 
 		return utility::Task( exe ).exitCode() ;
-
 	} ) ;
 
 	m_ui->tableWidget->setEnabled( true ) ;
@@ -1056,7 +1151,7 @@ void zuluCrypt::ShowOpenPartition()
 
 passwordDialog& zuluCrypt::setUpPasswordDialog()
 {
-	return passwordDialog::instance( m_ui->tableWidget,this,[ this ]( const QString& path ){
+	return passwordDialog::instance( m_ui->tableWidget,this,m_secrets,[ this ]( const QString& path ){
 
 		if( m_autoOpenMountPoint ){
 

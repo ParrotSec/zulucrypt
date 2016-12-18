@@ -25,7 +25,7 @@ SOURCES += main.cpp\
     task.cpp \
     deviceoffset.cpp \
     mountoptions.cpp \
-    volumeentryproperties.cpp \
+    volumepropery.cpp \
     zulumounttask.cpp \
     veracryptpimdialog.cpp
 
@@ -43,12 +43,13 @@ HEADERS  += zulumount.h\
     task.h \
     deviceoffset.h \
     mountoptions.h \
-    volumeentryproperties.h \
+    volumepropery.h \
     zulumounttask.h \
     veracryptpimdialog.h
 
-TRANSLATIONS = ../translations/zuluMount/messages.ts
+TRANSLATIONS = ../translations/zuluMount/en_US.ts
 TRANSLATIONS = ../translations/zuluMount/fr_FR.ts
+TRANSLATIONS = ../translations/zuluMount/de_DE.ts
 
 FORMS    += zulumount.ui\
 	    ../zuluCrypt-gui/dialogmsg.ui \

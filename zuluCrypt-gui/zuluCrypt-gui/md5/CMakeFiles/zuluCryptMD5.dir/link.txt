@@ -1,2 +1,0 @@
-/usr/bin/ar qc libzuluCryptMD5.a  CMakeFiles/zuluCryptMD5.dir/md5.c.o
-/usr/bin/ranlib libzuluCryptMD5.a

@@ -67,7 +67,6 @@
  lib/mount_fs_options.c
  lib/real_path.c
  lib/file_path_security.c
- lib/canonicalize/canonicalize.c
  lib/create_tcrypt.c
  lib/parse_fstab.c
  lib/resolve_paths.c
@@ -120,10 +119,10 @@
  set_target_properties( zuluCrypt     PROPERTIES SOVERSION ${LIB_VERSION} )
  set_target_properties( zuluCrypt-exe PROPERTIES SOVERSION ${LIB_VERSION} )
 
- if( STATIC_TCPLAY )
-	TARGET_LINK_LIBRARIES( zuluCrypt     String StringList Process ${cryptsetup_lib} ${blkid} -lgcrypt tcplay-static )
+ if( STATIC_ZULUPLAY )
+	TARGET_LINK_LIBRARIES( zuluCrypt     String StringList Process ${cryptsetup_lib} ${blkid} -lgcrypt zuluplay-static )
  else()
-	TARGET_LINK_LIBRARIES( zuluCrypt     String StringList Process ${cryptsetup_lib} ${blkid} ${TCPLAY_LIB} -lgcrypt ${TCPLAY_LIBRARIES} )
+	TARGET_LINK_LIBRARIES( zuluCrypt     String StringList Process ${cryptsetup_lib} ${blkid} ${TCPLAY_LIB} -lgcrypt -lzuluplay )
  endif()
 
  set_target_properties( zuluCrypt PROPERTIES LINK_FLAGS "-pie -Wl,-z,relro -Wl,-z,now" )
@@ -152,11 +151,10 @@
  set_target_properties( zuluCrypt-cli PROPERTIES INSTALL_RPATH "${CMAKE_INSTALL_FULL_LIBDIR}" )
  set_target_properties( zuluMount-cli PROPERTIES INSTALL_RPATH "${CMAKE_INSTALL_FULL_LIBDIR}" )
 
-
-  #zuluCryptKeyServer not used
- add_executable( zuluCryptKeyServer ../plugins/network_key/server.c ../zuluCrypt-gui/lxqt_wallet/backend/lxqtwallet.c )
- set_target_properties( zuluCryptKeyServer PROPERTIES COMPILE_FLAGS "-D_FILE_OFFSET_BITS=64 -Wall -s -fPIE -pthread -pedantic " )
- TARGET_LINK_LIBRARIES( zuluCryptKeyServer crypt_buffer )
+ #zuluCryptKeyServer not used
+ #add_executable( zuluCryptKeyServer ../plugins/network_key/server.c )
+ #set_target_properties( zuluCryptKeyServer PROPERTIES COMPILE_FLAGS "-D_FILE_OFFSET_BITS=64 -Wall -s -fPIE -pthread -pedantic " )
+ #TARGET_LINK_LIBRARIES( zuluCryptKeyServer lxqtwallet crypt_buffer )
 
  if( NOT NOSECRETSUPPORT )
 
@@ -173,13 +171,21 @@
 	endif()
  endif()
 
- install(TARGETS zuluCrypt-cli RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-            PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE SETUID
- )
+ if( USE_POLKIT )
+    install(TARGETS zuluCrypt-cli RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+            PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE )
+    install(TARGETS zuluMount-cli RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+	PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE )
+ else()
+    install(TARGETS zuluCrypt-cli RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+            PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE SETUID )
+    install(TARGETS zuluMount-cli RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+	PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE SETUID )
+ endif()
 
- install(TARGETS zuluMount-cli RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-	PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE SETUID
- )
+
+
+
 
  add_executable( zuluCrypt-testKey ../plugins/test/zuluCrypt-testKey.c )
 

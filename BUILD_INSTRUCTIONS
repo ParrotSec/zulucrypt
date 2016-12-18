@@ -9,10 +9,9 @@ This tool depends on the following packages installed to build, their precise na
 
 1. libpwquality-devel( optional dependency used to check the quality of passwords when creating volumes )
 2. libblkid-devel
-3. libqt4-devel( required if building GUI components )
-   libqt4-network
-   libqtcore4
-   libqtgui4
+3. For Qt4 build(libqt4-devel or a package that provides libqt4-network-devel,libqtcore4-devel,libqtgui4-devel)
+   For Qt5 build(qt5-base-devel or a packages that provides Qt5Core-devel,Qt5Gui-devel,Qt5Network-devel)
+   Above packages are required if building GUI components.
 4. gcc
 5. gcc-c++
 6. cryptsetup-devel
@@ -62,7 +61,9 @@ mkdir build
 
 cd build
 
-cmake -DCMAKE_INSTALL_PREFIX=/usr -DSHARE_MOUNT_PREFIX=default -DUDEVSUPPORT=true -DNOGUI=false -DQT5=false -DHOMEMOUNTPREFIX=false -DREUSEMOUNTPOINT=false -DNOGNOME=false -DNOKDE=false -DCMAKE_BUILD_TYPE=RELEASE . ..
+cmake -DCMAKE_INSTALL_PREFIX=/usr -DSHARE_MOUNT_PREFIX=default -DUDEVSUPPORT=true -DNOGUI=false -DQT5=true
+-DHOMEMOUNTPREFIX=false -DREUSEMOUNTPOINT=false -DNOGNOME=false -DINTERNAL_ZULUPLAY=false -DNOKDE=false
+-DINTERNAL_LXQT_WALLET=false -DUSE_POLKIT=false -DCMAKE_BUILD_TYPE=RELEASE . ..
 
 make
 
@@ -119,6 +120,22 @@ By default,the project demands exclusive control over the mount point path causi
 the path to already be taken when mounting and to unconditionally delete it on unmount.
 Set this option to "true" if you want to overide the above behavior and this ability seems useful when mounting
 volumes in a directory(like home directory) and wanting folder count to remain unchanged between volumes mounts.
+
+-DINTERNAL_LXQT_WALLET=false
+This project depends on lxqt_wallet project and it ships with an internal copy of the project. Set this option to "true"
+if you want zuluCrypt to unconditionally use the internal copy of the project or to "false" to make the build process
+use a system installed version if found.
+
+-DINTERNAL_ZULUPLAY=false
+Set this option to "true" if you want to unconditionally  an external library of this project.
+A value of "false" will cause the build system to to use system wide library if it is found.
+
+-DUSE_POLKIT=false
+Set this option to "true" if you want GUI components to start elevated and run in "mixed" mode. Good thing about
+this option is that CLI components will not be suid-root. Bad things about setting this option are:
+1. zuluMount-gui will loose its ability to unlock encrypted folders.
+2. lxqt_wallet wallet functionality will be disabled.
+3. GUI components will run from root's account and they will look different.
 
 Build errors/test fails/feature requests/recommendations can be reported at: https://github.com/mhogomchungu/zuluCrypt/issues
 or using my private email address at: mhogomchungu@gmail.com

@@ -26,8 +26,9 @@
 #include <QSystemTrayIcon>
 
 #include "../zuluMount-gui/monitor_mountinfo.h"
-#include "lxqt_wallet/frontend/lxqt_wallet.h"
+#include "lxqt_wallet.h"
 #include "utility.h"
+#include "secrets.h"
 
 class QWidget ;
 class QTableWidgetItem ;
@@ -44,38 +45,6 @@ class managevolumeheader ;
 class cryptfiles ;
 class walletconfig ;
 class QNetworkReply ;
-
-class changeWalletPassWord : public QWidget
-{
-	Q_OBJECT
-public:
-	static void instance( QWidget * parent )
-	{
-		new changeWalletPassWord( parent ) ;
-	}
-	changeWalletPassWord( QWidget * parent ) : m_wallet( LxQt::Wallet::getWalletBackend( LxQt::Wallet::internalBackEnd ) )
-	{
-		m_wallet->setInterfaceObject( this ) ;
-		m_wallet->setParent( parent ) ;
-		m_wallet->changeWalletPassWord( utility::walletName(),utility::applicationName() ) ;
-	}
-	~changeWalletPassWord()
-	{
-		m_wallet->deleteLater() ;
-	}
-private slots:
-	void walletpassWordChanged( bool e )
-	{
-		Q_UNUSED( e ) ;
-		this->deleteLater() ;
-	}
-	void walletIsOpen( bool e )
-	{
-		Q_UNUSED( e ) ;
-	}
-private:
-	LxQt::Wallet::Wallet * m_wallet ;
-};
 
 /*
  * below header is created at build time,it is set by CMakeLists.txt located in the root folder
@@ -100,6 +69,7 @@ signals:
 	void closeVolume( QTableWidgetItem *,int ) ;
 	void updateVolumeListSignal( QString,QString ) ;
 private slots :
+	void showTrayGUI( void ) ;
 	void autoOpenMountPoint( bool ) ;
 	void languageMenu( QAction * ) ;
 	void currentItemChanged( QTableWidgetItem * current,QTableWidgetItem * previous ) ;
@@ -118,7 +88,7 @@ private slots :
 	void readFavorites( void ) ;
 	void favClicked( QAction * ) ;
 	void favAboutToHide( void ) ;
-	void trayClicked( QSystemTrayIcon::ActivationReason  ) ;
+	void trayClicked( QSystemTrayIcon::ActivationReason ) ;
 	void trayProperty( void ) ;
 	void closeApplication( void ) ;
 	void minimizeToTray( void ) ;
@@ -161,6 +131,7 @@ private slots :
 	void updateVolumeList( const QString& = QString() ) ;
 	void updateVolumeList( QString,QString ) ;
 private:
+	void setIcons( void ) ;
 	void quitApplication( void ) ;
 	void removeRowFromTable( int ) ;
 	void openFolder( const QString& ) ;
@@ -182,7 +153,11 @@ private:
 	void setUpApp( const QString& ) ;
 	void decryptFile( const QString& ) ;
 
+	secrets m_secrets ;
+
 	Ui::zuluCrypt * m_ui = nullptr ;
+
+	QMenu * m_language_menu = nullptr ;
 
 	QSystemTrayIcon m_trayIcon ;
 

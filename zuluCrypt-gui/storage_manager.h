@@ -1,4 +1,0 @@
-
-#define HAS_SECRET_SUPPORT 1
-
-#define HAS_KWALLET_SUPPORT 0

@@ -37,7 +37,7 @@
 
 #include <memory>
 
-plugin::plugin( QDialog * parent,plugins::plugin t,std::function< void( const QByteArray& ) > function,const QString& e,const QVector<QString>& exe ) :
+plugin::plugin( QWidget * parent,plugins::plugin t,std::function< void( const QByteArray& ) > function,const QString& e,const QVector<QString>& exe ) :
 	QDialog( parent ),m_ui( new Ui::plugin ),m_function( std::move( function ) ),m_pluginType( t ),m_exe( exe )
 {
 	m_ui->setupUi( this ) ;
@@ -153,7 +153,7 @@ void plugin::pbSetKey()
 
 void plugin::pbSelectKeyFile()
 {
-	m_ui->lineEdit_2->setText( QFileDialog::getOpenFileName( this,tr( "KeyFile" ),utility::homePath(),0 ) ) ;
+	m_ui->lineEdit_2->setText( QFileDialog::getOpenFileName( this,tr( "KeyFile" ),utility::homePath() ) ) ;
 }
 
 void plugin::pbClose()

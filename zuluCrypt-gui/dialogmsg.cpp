@@ -99,7 +99,7 @@ from root account and then go to \"menu->options->manage non system partitions\"
 and add the volume to the list and the volume will stop being considered as \"system\".\n\n\
 Alternatively,you can add yourself to group \"zulucrypt\" and \"zulumount\" and all restrictions will go away." ) ;
 
-	this->ShowUIInfo( tr( "INFORMATION" ),msg ) ;
+	this->ShowUIInfo( tr( "INFORMATION" ),false,msg ) ;
 }
 
 void DialogMsg::ShowPermissionProblem( const QString& msg,const QString& device )
@@ -123,6 +123,16 @@ void DialogMsg::ShowPermissionProblem( const QString& msg,const QString& device 
 
 void DialogMsg::setDimentions( const QString& msg )
 {
+	this->setFixedSize( 372,146 ) ;
+
+	m_ui->label->setGeometry( 10,10,351,91 ) ;
+	m_ui->label->setFixedSize( m_ui->label->size() ) ;
+	m_ui->pbOk->setGeometry( 150,110,75,31 ) ;
+	m_ui->pbYes->setGeometry( 120,110,71,31 ) ;
+	m_ui->pbNo->setGeometry( 190,110,75,31 ) ;
+
+	return ;
+
 	int len = msg.size() ;
 
 	if( len <= 30 ){
@@ -137,13 +147,13 @@ void DialogMsg::setDimentions( const QString& msg )
 
 	}else if( len <= 130 ){
 
-		this->setFixedSize( 372,118 ) ;
+		this->setFixedSize( 372,138 ) ;
 
-		m_ui->label->setGeometry( 10,10,351,61 ) ;
+		m_ui->label->setGeometry( 10,10,351,81 ) ;
 		m_ui->label->setFixedSize( m_ui->label->size() ) ;
-		m_ui->pbOk->setGeometry( 150,80,75,31 ) ;
-		m_ui->pbYes->setGeometry( 120,80,71,31 ) ;
-		m_ui->pbNo->setGeometry( 190,80,75,31 ) ;
+		m_ui->pbOk->setGeometry( 150,100,75,31 ) ;
+		m_ui->pbYes->setGeometry( 120,100,71,31 ) ;
+		m_ui->pbNo->setGeometry( 190,100,75,31 ) ;
 
 	}else if( len > 130 ){
 
@@ -200,8 +210,9 @@ void DialogMsg::ShowUIVolumeProperties( const QString& title,const QString& m )
 	m_ui->pbOk->setHidden( false ) ;
 
 	m_ui->label->setHidden( true ) ;
+
 	QString msg = m ;
-	msg.replace( "   ","" ) ;
+	msg.remove( "   " ) ;
 
 	auto stl = msg.split( "\n" ) ;
 
@@ -209,7 +220,7 @@ void DialogMsg::ShowUIVolumeProperties( const QString& title,const QString& m )
 
 		this->setFixedSize( this->size() ) ;
 
-		auto _trancate_long_path = []( QString e ){
+		auto _trancate_long_path = []( const QString& e )->QString{
 
 			const int len    = 40 ;
 			const int length = e.length() ;
@@ -218,7 +229,7 @@ void DialogMsg::ShowUIVolumeProperties( const QString& title,const QString& m )
 
 				return e ;
 			}else{
-				return e.replace( 25,length - len,"......" ) ;
+				return e.mid( 0,18 ) + "...." + e.mid( length - 18 ) ;
 			}
 		} ;
 
@@ -254,13 +265,18 @@ void DialogMsg::ShowUIVolumeProperties( const QString& title,const QString& m )
 	}
 }
 
-void DialogMsg::ShowUIInfo( const QString& title,const QString& msg )
+void DialogMsg::ShowUIInfo( const QString& title,bool centered,const QString& msg )
 {
 	m_ui->pbYes->setHidden( true ) ;
 	m_ui->pbNo->setHidden( true ) ;
 	m_ui->pbOk->setHidden( false ) ;
 
-	m_ui->label->setAlignment( Qt::AlignLeft|Qt::AlignVCenter ) ;
+	if( centered ){
+
+		m_ui->label->setAlignment( Qt::AlignHCenter|Qt::AlignVCenter ) ;
+	}else{
+		m_ui->label->setAlignment( Qt::AlignLeft|Qt::AlignVCenter ) ;
+	}
 
 	this->setFixedSize( 562,338 ) ;
 

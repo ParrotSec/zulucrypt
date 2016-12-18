@@ -19,7 +19,7 @@
 
 #include "password_dialog.h"
 #include "zulucrypt.h"
-#include "lxqt_wallet/frontend/lxqt_wallet.h"
+#include "lxqt_wallet.h"
 
 #include <QMenu>
 #include <Qt>
@@ -61,13 +61,14 @@
  */
 #include "truecrypt_support.h"
 
-/*
- * this ugly global variable is defined in zulucrypt.cpp to prevent multiple prompts when opening multiple volumes
- */
-static QString _internalPassWord ;
-
-passwordDialog::passwordDialog( QTableWidget * table,QWidget * parent,std::function< void( const QString& ) > f ) :
-	QDialog( parent ),m_ui( new Ui::PasswordDialog() ),m_openFolder( std::move( f ) )
+passwordDialog::passwordDialog( QTableWidget * table,
+				QWidget * parent,
+				secrets& s,
+				std::function< void( const QString& ) > f ) :
+	QDialog( parent ),
+	m_ui( new Ui::PasswordDialog() ),
+	m_secrets( s ),
+	m_openFolder( std::move( f ) )
 {
 	m_ui->setupUi( this ) ;
 
@@ -353,7 +354,7 @@ void passwordDialog::clickedPassPhraseFromFileButton()
 		msg = tr( "Select A Key Module" ) ;
 	}
 
-	auto Z = QFileDialog::getOpenFileName( this,msg,utility::homePath(),0 ) ;
+	auto Z = QFileDialog::getOpenFileName( this,msg,utility::homePath() ) ;
 
 	if( !Z.isEmpty() ){
 
@@ -365,6 +366,16 @@ void passwordDialog::mount_point( void )
 {
 	auto p = tr( "Select Path To Mount Point Folder" ) ;
 	auto Z = QFileDialog::getExistingDirectory( this,p,utility::homePath(),QFileDialog::ShowDirsOnly ) ;
+
+	while( true ){
+
+		if( Z.endsWith( '/' ) ){
+
+			Z.truncate( Z.length() - 1 ) ;
+		}else{
+			break ;
+		}
+	}
 
 	if( !Z.isEmpty() ){
 
@@ -384,7 +395,7 @@ void passwordDialog::mount_point( void )
 
 void passwordDialog::file_path( void )
 {
-	auto Z = QFileDialog::getOpenFileName( this,tr( "Select Encrypted volume" ),utility::homePath(),0 ) ;
+	auto Z = QFileDialog::getOpenFileName( this,tr( "Select Encrypted volume" ),utility::homePath() ) ;
 
 	m_ui->OpenVolumePath->setText( Z ) ;
 
@@ -412,29 +423,34 @@ void passwordDialog::buttonOpenClicked( void )
 		auto wallet = m_ui->PassPhraseField->text() ;
 		auto keyID = m_ui->OpenVolumePath->text() ;
 
+		using wbe = LXQt::Wallet::BackEnd ;
+
 		utility::wallet w ;
 
 		if( wallet == tr( KWALLET ) ){
 
-			w = utility::getKeyFromWallet( LxQt::Wallet::kwalletBackEnd,keyID ) ;
+			auto s = m_secrets.walletBk( wbe::kwallet ) ;
+
+			w = utility::getKey( s.bk(),keyID ) ;
 
 		}else if( wallet == tr( INTERNAL_WALLET ) ){
 
-			w = utility::getKeyFromWallet( LxQt::Wallet::internalBackEnd,keyID,_internalPassWord ) ;
+			auto s = m_secrets.walletBk( wbe::internal ) ;
+
+			w = utility::getKey( s.bk(),keyID,"zuluCrypt" ) ;
 
 			if( w.notConfigured ){
 
 				DialogMsg msg( this ) ;
 				msg.ShowUIOK( tr( "ERROR!" ),tr( "Internal wallet is not configured" ) ) ;
 				return this->enableAll() ;
-
-			}else{
-				_internalPassWord = w.password ;
 			}
 
 		}else if( wallet == tr( GNOME_WALLET ) ){
 
-			w = utility::getKeyFromWallet( LxQt::Wallet::secretServiceBackEnd,keyID ) ;
+			auto s = m_secrets.walletBk( wbe::libsecret ) ;
+
+			w = utility::getKey( s.bk(),keyID ) ;
 		}else{
 			m_key = m_ui->PassPhraseField->text().toLatin1() ;
 			return this->openVolume() ;
@@ -454,7 +470,6 @@ void passwordDialog::buttonOpenClicked( void )
 				this->openVolume() ;
 			}
 		}else{
-			_internalPassWord.clear() ;
 			this->enableAll() ;
 		}
 	}else{
@@ -612,7 +627,7 @@ void passwordDialog::openVolume()
 
 			}else if( r == "hmac" || r == "gpg" || r == "keykeyfile" ){
 
-				if( utility::pluginKey( this,&m_key,r ) ){
+				if( utility::pluginKey( m_secrets.parent(),&m_key,r ) ){
 
 					return this->enableAll() ;
 				}else{
@@ -682,20 +697,9 @@ void passwordDialog::openVolume()
 
 	if( r.success() ){
 
-		if( utility::mapperPathExists( m_device ) ){
+		m_openFolder( utility::mountPath( m_point ) ) ;
 
-			m_openFolder( utility::mountPath( m_point ) ) ;
-
-			this->HideUI() ;
-		}else{
-			/*
-			 * we arrive here if zuluCrypt-cli reports a volume was opened but it was not.
-			 * most likely reason for getting here is if it crashed.
-			 */
-			DialogMsg msg( this ) ;
-			msg.ShowUIOK( tr( "ERROR!" ),tr( "An error has occured and the volume could not be opened" ) ) ;
-			this->HideUI() ;
-		}
+		this->HideUI() ;
 	}else{
 		this->failed( r.exitCode() ) ;
 

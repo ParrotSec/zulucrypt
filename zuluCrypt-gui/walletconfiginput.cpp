@@ -123,9 +123,19 @@ void walletconfiginput::slotCancel()
 
 void walletconfiginput::pbImageFilePath()
 {
-	auto x = QFileDialog::getOpenFileName( this,tr( "Select A Volume" ),utility::homePath(),0 ) ;
+	auto x = QFileDialog::getOpenFileName( this,tr( "Select A Volume" ),utility::homePath() ) ;
 
 	if( !x.isEmpty() ){
+
+		while( true ){
+
+			if( x.endsWith( '/' ) ){
+
+				x.truncate( x.length() - 1 ) ;
+			}else{
+				break ;
+			}
+		}
 
 		this->setvolumeID( x ) ;
 	}
@@ -145,7 +155,7 @@ void walletconfiginput::setvolumeID( QString id )
 
 		m_ui->lineEditVolumeID->setText( id ) ;
 	}else{
-		auto z = Task::await<QString>( utility::getUUIDFromPath( id ) ) ;
+		auto z = utility::getUUIDFromPath( id ).await() ;
 
 		if( z.isEmpty() ){
 

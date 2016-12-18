@@ -1,2 +1,0 @@
-/usr/bin/ar qc liblxqtwallet-backend.a  CMakeFiles/lxqtwallet-backend.dir/lxqtwallet.c.o
-/usr/bin/ranlib liblxqtwallet-backend.a

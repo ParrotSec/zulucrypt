@@ -67,7 +67,7 @@ managevolumeheader::managevolumeheader( QWidget * parent ) : QDialog( parent ),m
 
 	this->installEventFilter( this ) ;
 
-	m_ui->groupBox_2->setEnabled( false ) ;
+	m_ui->frame_2->setEnabled( false ) ;
 	m_ui->rbFDETrueCrypt->setEnabled( false ) ;
 	m_ui->rbNormalTrueCrypt->setEnabled( false ) ;
 	m_ui->rbSystemTrueCrypt->setEnabled( false ) ;
@@ -102,13 +102,13 @@ void managevolumeheader::rbTrueCryptVolume( bool toggled )
 void managevolumeheader::enableTrueCrypt( bool enable )
 {
 	m_ui->lineEditPassWord->clear() ;
-	m_ui->groupBox_2->setEnabled( enable ) ;
+	m_ui->frame_2->setEnabled( enable ) ;
 	m_ui->rbFDETrueCrypt->setEnabled( enable ) ;
 	m_ui->rbNormalTrueCrypt->setEnabled( enable ) ;
 	m_ui->rbSystemTrueCrypt->setEnabled( enable ) ;
 	m_ui->rbKey->setChecked( enable ) ;
 	m_ui->rbKeyFile->setEnabled( enable ) ;
-	m_ui->groupBox->setEnabled( enable ) ;
+	m_ui->frame->setEnabled( enable ) ;
 	m_ui->label->setEnabled( enable ) ;
 	m_ui->pBKeyFile->setEnabled( enable ) ;
 	m_ui->lineEditPassWord->setEnabled( enable ) ;
@@ -237,19 +237,30 @@ void managevolumeheader::pbOpenLuksHeaderBackUp()
 
 	if( m_operation == "restore" ){
 
-		Z = QFileDialog::getOpenFileName( this,tr( "Select A File With A LUKS Backup Header" ),utility::homePath(),0 ) ;
+		Z = QFileDialog::getOpenFileName( this,tr( "Select A File With A LUKS Backup Header" ),utility::homePath() ) ;
 
 		if( Z.isEmpty() ){
 
 			return ;
 		}
 	}else{
-		Z = QFileDialog::getExistingDirectory( this,tr( "Select A Folder To Store The Header" ),utility::homePath(),0 ) ;
+		Z = QFileDialog::getExistingDirectory( this,tr( "Select A Folder To Store The Header" ),utility::homePath(),QFileDialog::ShowDirsOnly ) ;
 
 		if( Z.isEmpty() ){
 
 			return ;
 		}
+
+		while( true ){
+
+			if( Z.endsWith( '/' ) ){
+
+				Z.truncate( Z.length() - 1 ) ;
+			}else{
+				break ;
+			}
+		}
+
 		QString p = m_ui->lineEditDevicePath->text().split( "/" ).last() ;
 
 		if( !p.isEmpty() ){
@@ -306,13 +317,13 @@ void managevolumeheader::enableAll()
 
 	if( m_ui->rbTrueCryptHeader->isChecked() ){
 
-		m_ui->groupBox_2->setEnabled( true ) ;
+		m_ui->frame_2->setEnabled( true ) ;
 		m_ui->rbFDETrueCrypt->setEnabled( true ) ;
 		m_ui->rbNormalTrueCrypt->setEnabled( true ) ;
 		m_ui->rbSystemTrueCrypt->setEnabled( true ) ;
 		m_ui->rbKey->setChecked( true ) ;
 		m_ui->rbKeyFile->setEnabled( true ) ;
-		m_ui->groupBox->setEnabled( true ) ;
+		m_ui->frame->setEnabled( true ) ;
 		m_ui->label->setEnabled( true ) ;
 
 		if( m_ui->rbKeyFile->isChecked() ){
@@ -336,11 +347,11 @@ void managevolumeheader::disableAll()
 	m_ui->pushButtonFile->setEnabled( false ) ;
 	m_ui->pushButtonPartition->setEnabled( false ) ;
 	m_ui->rbKey->setChecked( false ) ;
-	m_ui->groupBox->setEnabled( false ) ;
+	m_ui->frame->setEnabled( false ) ;
 	m_ui->label->setEnabled( false ) ;
 	m_ui->pBKeyFile->setEnabled( false ) ;
 	m_ui->rbTrueCryptHeader->setEnabled( false ) ;
-	m_ui->groupBox_2->setEnabled( false ) ;
+	m_ui->frame_2->setEnabled( false ) ;
 	m_ui->rbFDETrueCrypt->setEnabled( false ) ;
 	m_ui->rbNormalTrueCrypt->setEnabled( false ) ;
 	m_ui->rbSystemTrueCrypt->setEnabled( false ) ;
@@ -456,7 +467,7 @@ void managevolumeheader::pbOpenPartition()
 
 void managevolumeheader::pbOpenFile()
 {
-	QString Z = QFileDialog::getOpenFileName( this,tr( "Select luks container you want to backup its header" ),utility::homePath(),0 ) ;
+	QString Z = QFileDialog::getOpenFileName( this,tr( "Select luks container you want to backup its header" ),utility::homePath() ) ;
 
 	m_ui->lineEditDevicePath->setText( Z ) ;
 
@@ -470,7 +481,7 @@ void managevolumeheader::pbOpenFile()
 
 void managevolumeheader::pbKeyFile()
 {
-	QString Z = QFileDialog::getOpenFileName( this,tr( "" ),utility::homePath(),0 ) ;
+	QString Z = QFileDialog::getOpenFileName( this,tr( "" ),utility::homePath() ) ;
 
 	if( !Z.isEmpty() ){
 

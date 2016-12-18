@@ -11,10 +11,12 @@ set( SRC
 )
 
 set( MOC_FILES
+	../task.h
 	../dialogmsg.h
 	../readonlywarning.h
-	../checkforupdates.h
 	../plugin.h
+	../utility.h
+	../networkAccessManager.hpp
 )
 
 set( UI_FILES ../dialogmsg.ui ../readonlywarning.ui ../plugin.ui )
@@ -35,9 +37,9 @@ endif()
 add_library( sharedObject STATIC ${MOC} ${SRC} ${UI_FILES} ${ICON} )
 
 if( BUILDKWALLET )
-	target_link_libraries( sharedObject lxqtwallet ${kwallet_library} -lblkid )
+	target_link_libraries( sharedObject -lgcrypt lxqt-wallet ${kwallet_library} -lblkid )
 else()
-	target_link_libraries( sharedObject lxqtwallet -lblkid )
+	target_link_libraries( sharedObject -lgcrypt lxqt-wallet -lblkid )
 endif()
 
 set_target_properties( sharedObject PROPERTIES COMPILE_FLAGS "-D_FILE_OFFSET_BITS=64 -Wall -s -fPIC -pthread -pedantic" )

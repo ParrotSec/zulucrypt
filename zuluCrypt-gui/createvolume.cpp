@@ -66,9 +66,7 @@ createvolume::createvolume( QWidget * parent ) : QDialog( parent ),m_ui( new Ui:
 	connect( m_ui->pbHiddenKeyFile,SIGNAL( clicked() ),this,SLOT( pbOpenHiddenKeyFile() ) ) ;
 	connect( m_ui->comboBoxVolumeType,SIGNAL( activated( int ) ),this,SLOT( setOptions( int ) ) ) ;
 
-	m_ui->groupBox->setEnabled( true ) ;
-
-	this->installEventFilter( this ) ;
+        this->installEventFilter( this ) ;
 
 	m_ui->labelvolumeOptions->setVisible( false ) ;
 
@@ -93,7 +91,7 @@ createvolume::createvolume( QWidget * parent ) : QDialog( parent ),m_ui( new Ui:
 	 * for simplicity's sake,lets only show most popular file systems.
 	 */
 
-	m_ui->comboBoxFS->addItems( { "ext4","vfat","ntfs","ext2","ext3","exfat" } ) ;
+	m_ui->comboBoxFS->addItems( { "ext4","vfat","ntfs","ext2","ext3","exfat","btrfs" } ) ;
 
 	m_ui->comboBoxVolumeType->clear() ;
 
@@ -376,7 +374,7 @@ void createvolume::setOptions( int e )
 				type == createvolume::luks2 ;
 
 		#else
-			return type == createvolume::luks || type == createvolume::luks_external_header;
+			return type == createvolume::luks || type == createvolume::luks_external_header ;
 		#endif
 	} ;
 
@@ -497,7 +495,7 @@ void createvolume::ShowUI( const QString& l,const QString& v )
 
 void createvolume::pbOpenKeyFile()
 {
-	auto Z = QFileDialog::getOpenFileName( this,tr( "Keyfile Path" ),utility::homePath(),0 ) ;
+	auto Z = QFileDialog::getOpenFileName( this,tr( "Keyfile Path" ),utility::homePath() ) ;
 
 	if( !Z.isEmpty() ){
 
@@ -507,7 +505,7 @@ void createvolume::pbOpenKeyFile()
 
 void createvolume::pbOpenHiddenKeyFile()
 {
-	auto Z = QFileDialog::getOpenFileName( this,tr( "Keyfile Path" ),utility::homePath(),0 ) ;
+	auto Z = QFileDialog::getOpenFileName( this,tr( "Keyfile Path" ),utility::homePath() ) ;
 
 	if( !Z.isEmpty() ){
 

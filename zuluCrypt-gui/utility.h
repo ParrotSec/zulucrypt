@@ -37,7 +37,8 @@
 #include <QSystemTrayIcon>
 #include <QAction>
 #include <QIcon>
-
+#include <QByteArray>
+#include <QEvent>
 #include <functional>
 #include <memory>
 #include <array>
@@ -51,7 +52,7 @@
 #include <blkid/blkid.h>
 
 #include "task.h"
-#include "lxqt_wallet/frontend/lxqt_wallet.h"
+#include "lxqt_wallet.h"
 
 #include <QObject>
 #include <QLabel>
@@ -59,48 +60,100 @@
 #include <poll.h>
 #include <fcntl.h>
 
-class QByteArray ;
-class QEvent ;
+#include <iostream>
 
 namespace utility
 {
-	template< typename T >
-	class qObject_unique_ptr
+	class debug
 	{
 	public:
-		explicit qObject_unique_ptr( T * t ) : m_qObject( t )
+		debug( bool stdout = true ) : m_stdout( stdout )
 		{
 		}
 
-		qObject_unique_ptr( const qObject_unique_ptr& ) = delete ;
-		qObject_unique_ptr& operator =( const qObject_unique_ptr& ) = delete ;
-
-		qObject_unique_ptr( qObject_unique_ptr&& other )
+		template< typename T >
+		utility::debug operator<<( const T& e )
 		{
-			this->deleteHandle() ;
-			m_qObject = other.m_qObject ;
-			other.m_qObject = nullptr ;
+			if( m_stdout ){
+
+				std::cout << e << std::endl ;
+			}else{
+				std::cerr << e << std::endl ;
+			}
+
+			return utility::debug( m_stdout ) ;
 		}
 
-		T * operator->()
+		utility::debug operator<<( const QByteArray& e )
 		{
-			return m_qObject ;
+			if( m_stdout ){
+
+				std::cout << e.constData() << std::endl ;
+			}else{
+				std::cerr << e.constData() << std::endl ;
+			}
+
+			return utility::debug( m_stdout ) ;
 		}
 
-		~qObject_unique_ptr()
+		utility::debug operator<<( const QString& e )
 		{
-			this->deleteHandle() ;
+			if( m_stdout ){
+
+				std::cout << e.toLatin1().constData() << std::endl ;
+			}else{
+				std::cerr << e.toLatin1().constData() << std::endl ;
+			}
+
+			return utility::debug( m_stdout ) ;
 		}
 	private:
-		void deleteHandle()
-		{
-			if( m_qObject ){
+		bool m_stdout ;
+	};
+}
 
-				m_qObject->deleteLater() ;
+namespace utility
+{
+	class selectMenuOption : public QObject
+	{
+		Q_OBJECT
+	public:
+		using function_t = std::function< void( const QString& e ) > ;
+
+		selectMenuOption( QMenu * m,bool e,
+				  function_t && f = []( const QString& e ){ Q_UNUSED( e ) } ) :
+		m_menu( m ),m_function( f )
+		{
+			if( e ){
+
+				this->setParent( m ) ;
 			}
 		}
+	public slots :
+		void selectOption( const QString& f )
+		{
+			for( const auto& it : m_menu->actions() ){
 
-		T * m_qObject = nullptr ;
+				QString e = it->text() ;
+
+				e.remove( "&" ) ;
+
+				it->setChecked( f == e ) ;
+			}
+
+			m_function( f ) ;
+		}
+		void selectOption( QAction * ac )
+		{
+			auto e = ac->text() ;
+
+			e.remove( "&" ) ;
+
+			this->selectOption( e ) ;
+		}
+	private:
+		QMenu * m_menu ;
+		std::function< void( const QString& ) > m_function ;
 	};
 }
 
@@ -116,7 +169,7 @@ namespace utility
 	QString homePath() ;
 
 	template< typename T >
-	void changeFileOwner( const T& f )
+	void changePathOwner( const T& f )
 	{
 		int uid = utility::getUID() ;
 		int fd = f.handle() ;
@@ -127,7 +180,7 @@ namespace utility
 		}
 	}
 
-	static inline void changeFileOwner( const char * path )
+	static inline void changePathOwner( const char * path )
 	{
 		int uid = utility::getUID() ;
 
@@ -137,43 +190,44 @@ namespace utility
 		}
 	}
 
+	static inline void changePathOwner( const QString& path )
+	{
+		utility::changePathOwner( path.toLatin1().constData() ) ;
+	}
+
 	template< typename T >
-	void changeFilePermissions( const T& f,int mode = 0777 )
+	void changePathPermissions( const T& f,int mode = 0666 )
 	{
 		if( fchmod( f.handle(),mode ) ){;}
+	}
+
+	static inline void changePathPermissions( const QString& f,int mode = 0666 )
+	{
+		if( chmod( f.toLatin1().constData(),mode ) ){;}
 	}
 }
 
 namespace utility
 {
-	class Array
-	{
-	public:
-		explicit Array( const QString&,char splitter = '\n' ) ;
-		explicit Array( const QStringList& ) ;
-		size_t size() ;
-		char * const * value() ;
-	private :
-		void setUp() ;
-		QVector< const char * > m_vector ;
-		QList< QByteArray > m_list ;
-	};
-
 	struct wallet
 	{
 		bool opened ;
 		bool notConfigured ;
 		QString key ;
-		QString password ;
 	};
 
 	int startApplication( const char * appName,std::function<int()> ) ;
 
-	wallet getKeyFromWallet( LxQt::Wallet::walletBackEnd,const QString& keyID,const QString& pwd = QString() ) ;
+	wallet getKey( LXQt::Wallet::Wallet&,const QString& keyID,
+		       const QString& app = QString() ) ;
 
-	QString cmdArgumentValue( const QStringList&,const QString& arg,const QString& defaulT = QString() ) ;
+	QString cmdArgumentValue( const QStringList&,const QString& arg,
+				  const QString& defaulT = QString() ) ;
 
 	QIcon getIcon( const QString& ) ;
+	void setIcons( const QString&,const QString& ) ;
+	void setIconMenu( const QString& app,QAction * ac,QWidget *,
+			  std::function< void( const QString& ) >&& ) ;
 
 	bool autoSetVolumeAsVeraCrypt( const QString& ) ;
 	void autoSetVolumeAsVeraCrypt( const QString&,bool ) ;
@@ -190,6 +244,7 @@ namespace utility
 	void removeFavoriteEntry( const QString& ) ;
 	bool pathExists( const QString& ) ;
 	bool canCreateFile( const QString& ) ;
+	QString prettyfySpaceUsage( quint64 ) ;
 	QString resolvePath( const QString& ) ;
 	QString hashPath( const QByteArray& ) ;
 	QString cryptMapperPath( void ) ;
@@ -226,14 +281,19 @@ namespace utility
 	void licenseInfo( QWidget * ) ;
 	void showTrayIcon( QAction *,QSystemTrayIcon *,bool = true ) ;
 	void trayProperty( QSystemTrayIcon *,bool = true ) ;
+	void createHomeFolder( void ) ;
+	void createFolderPath( const QString& ) ;
 
 	QString powerOffCommand( void ) ;
 
 	int favoriteClickedOption( const QString& ) ;
 
-	bool reUseMountPointPath( void ) ;
+	QString executableFullPath( const QString& ) ;
 
-	void setLocalizationLanguage( bool translate,QWidget * obj,QAction * ac,const QString& ) ;
+	bool reUseMountPointPath( void ) ;
+	bool reUseMountPoint( void ) ;
+
+	void setLocalizationLanguage( bool translate,QMenu * ac,const QString& ) ;
 	void languageMenu( QWidget *,QMenu *,QAction *,const char * ) ;
 
 	using array_t = std::array< int,10 > ;
@@ -243,7 +303,7 @@ namespace utility
 
 	void createPlugInMenu( QMenu *,const QString&,const QString&,const QString&,bool ) ;
 
-	int pluginKey( QDialog *,QByteArray *,const QString& ) ;
+	int pluginKey( QWidget *,QByteArray *,const QString& ) ;
 
 	QFont getFont( QWidget * ) ;
 	void saveFont( const QFont& ) ;
@@ -252,10 +312,82 @@ namespace utility
 	::Task::future< int >& exec( const QString& ) ;
 	::Task::future< QStringList >& luksEmptySlots( const QString& volumePath ) ;
 	::Task::future< QString >& getUUIDFromPath( const QString& ) ;
-	::Task::future<QString>& getKeyFromWallet( LxQt::Wallet::Wallet * wallet,const QString& volumeID ) ;
 	::Task::future< bool >& openPath( const QString& path,const QString& opener,const QString& env = QString() ) ;
 
 	void openPath( const QString& path,const QString& opener,const QString& env,QWidget *,const QString&,const QString& ) ;
+}
+
+namespace utility
+{
+	template< typename ... F >
+	bool atLeastOnePathExists( const F& ... f ){
+
+		for( const auto& it : { f ... } ){
+
+			if( utility::pathExists( it ) ){
+
+				return true ;
+			}
+		}
+
+		return false ;
+	}
+
+	template< typename E,typename ... F >
+	bool containsAtleastOne( const E& e,const F& ... f )
+	{
+		for( const auto& it : { f ... } ){
+
+			if( e.contains( it ) ){
+
+				return true ;
+			}
+		}
+
+		return false ;
+	}
+
+	template< typename E,typename ... F >
+	bool startsWithAtLeastOne( const E& e,const F& ... f )
+	{
+		for( const auto& it : { f ... } ){
+
+			if( e.startsWith( it ) ){
+
+				return true ;
+			}
+		}
+
+		return false ;
+	}
+
+	template< typename E,typename ... F >
+	bool endsWithAtLeastOne( const E& e,const F& ... f )
+	{
+		for( const auto& it : { f ... } ){
+
+			if( e.endsWith( it ) ){
+
+				return true ;
+			}
+		}
+
+		return false ;
+	}
+
+	template< typename E,typename ... F >
+	bool equalsAtleastOne( const E& e,const F& ... f )
+	{
+		for( const auto& it : { f ... } ){
+
+			if( e == it ){
+
+				return true ;
+			}
+		}
+
+		return false ;
+	}
 }
 
 namespace utility
@@ -367,7 +499,7 @@ namespace utility
 			if( fd != -1 ){
 
 				::close( fd ) ;
-			}			
+			}
 		} ;
 	} ;
 }
@@ -435,32 +567,23 @@ namespace utility
 
 			l.exec() ;
 		}
+		static QString makePath( QString e )
+		{
+			e.replace( "\"","\"\"\"" ) ;
+
+			return "\"" + e + "\"" ;
+		}
 		Task()
 		{
 		}
-		Task( const QString& exe,int waitTime = -1,const QStringList& env = QStringList(),
-		      std::function< void() > f = [](){} )
+		Task( const QString& exe,int waitTime = -1,const QProcessEnvironment& env = QProcessEnvironment(),
+		      const QByteArray& password = QByteArray(),const std::function< void() >& f = [](){} )
 		{
-			class Process : public QProcess{
-			public:
-				Process( std::function< void() >&& f ) : m_function( std::move( f ) )
-				{
-				}
-			protected:
-				void setupChildProcess()
-				{
-					m_function() ;
-				}
-			private:
-				std::function< void() > m_function ;
-			} p( std::move( f ) ) ;
-
-			p.setEnvironment( env ) ;
-			p.start( exe ) ;
-			m_finished   = p.waitForFinished( waitTime ) ;
-			m_exitCode   = p.exitCode() ;
-			m_exitStatus = p.exitStatus() ;
-			m_data       = p.readAll() ;
+			this->execute( exe,waitTime,env,password,f ) ;
+		}
+		Task( const QString& exe,const QProcessEnvironment& env,const std::function< void() >& f )
+		{
+			this->execute( exe,-1,env,QByteArray(),f ) ;
 		}
 		QStringList splitOutput( char token ) const
 		{
@@ -473,6 +596,10 @@ namespace utility
 		const QByteArray& output() const
 		{
 			return m_data ;
+		}
+		const QByteArray& stdError() const
+		{
+			return m_stdError ;
 		}
 		int exitCode() const
 		{
@@ -499,7 +626,46 @@ namespace utility
 			return this->splitOutput( '\n' ).size() > 12 ;
 		}
 	private:
+		void execute( const QString& exe,int waitTime,const QProcessEnvironment& env,
+			      const QByteArray& password,const std::function< void() >& f )
+		{
+			class Process : public QProcess{
+			public:
+				Process( const std::function< void() >& f ) : m_function( f )
+				{
+				}
+			protected:
+				void setupChildProcess()
+				{
+					m_function() ;
+				}
+			private:
+				std::function< void() > m_function ;
+			} p( f ) ;
+
+			p.setProcessEnvironment( env ) ;
+
+			p.start( exe ) ;
+
+			if( !password.isEmpty() ){
+
+				p.waitForStarted() ;
+
+				p.write( password + '\n' ) ;
+
+				p.closeWriteChannel() ;
+			}
+
+			m_finished   = p.waitForFinished( waitTime ) ;
+			m_exitCode   = p.exitCode() ;
+			m_exitStatus = p.exitStatus() ;
+			m_data       = p.readAll() ;
+			m_stdError   = p.readAllStandardError() ;
+		}
+
 		QByteArray m_data ;
+		QByteArray m_stdError ;
+
 		int m_exitCode ;
 		int m_exitStatus ;
 		bool m_finished ;

@@ -51,14 +51,22 @@ manageSystemVolumes::manageSystemVolumes( QWidget * parent ) : QDialog( parent )
 	connect( m_ui->tableWidget,SIGNAL( itemClicked( QTableWidgetItem * ) ),this,
 		SLOT( itemClicked( QTableWidgetItem * ) ) ) ;
 
-	m_ac = new QAction( this ) ;
-	QList<QKeySequence> keys ;
-	keys.append( Qt::Key_Enter ) ;
-	keys.append( Qt::Key_Return ) ;
-	keys.append( Qt::Key_Menu ) ;
-	m_ac->setShortcuts( keys ) ;
-	connect( m_ac,SIGNAL( triggered() ),this,SLOT( defaultButton() ) ) ;
-	this->addAction( m_ac ) ;
+	this->addAction( [ this ](){
+
+		auto ac = new QAction( this ) ;
+
+		QList<QKeySequence> keys ;
+
+		keys.append( Qt::Key_Enter ) ;
+		keys.append( Qt::Key_Return ) ;
+		keys.append( Qt::Key_Menu ) ;
+
+		ac->setShortcuts( keys ) ;
+
+		connect( ac,SIGNAL( triggered() ),this,SLOT( defaultButton() ) ) ;
+
+		return ac ;
+	}() ) ;
 
 	this->installEventFilter( this ) ;
 }
@@ -88,7 +96,7 @@ void manageSystemVolumes::defaultButton()
 
 void manageSystemVolumes::currentItemChanged( QTableWidgetItem * current,QTableWidgetItem * previous )
 {
-	tablewidget::selectTableRow( current,previous ) ;
+	tablewidget::selectRow( current,previous ) ;
 }
 
 void manageSystemVolumes::readSystemPartitions()
@@ -179,7 +187,7 @@ void manageSystemVolumes::removeCurrentRow()
 
 	if( msg.ShowUIYesNoDefaultNo( tr( "WARNING"),m ) == QMessageBox::Yes ){
 
-		tablewidget::deleteRowFromTable( m_ui->tableWidget,it->row() ) ;
+		tablewidget::deleteRow( m_ui->tableWidget,it->row() ) ;
 	}
 }
 
@@ -195,7 +203,7 @@ void manageSystemVolumes::addItemsToTable( QString path )
 
 void manageSystemVolumes::addItemsToTable( QStringList paths )
 {
-	tablewidget::addRowToTable( m_ui->tableWidget,paths ) ;
+	tablewidget::addRow( m_ui->tableWidget,paths ) ;
 }
 
 void manageSystemVolumes::pbDone()
@@ -206,7 +214,7 @@ void manageSystemVolumes::pbDone()
 
 void manageSystemVolumes::pbFile()
 {
-	auto Z = QFileDialog::getOpenFileName( this,tr( "Select Path To System Volume" ),utility::homePath(),0 ) ;
+	auto Z = QFileDialog::getOpenFileName( this,tr( "Select Path To System Volume" ),utility::homePath() ) ;
 
 	this->addItemsToTable( Z ) ;
 }

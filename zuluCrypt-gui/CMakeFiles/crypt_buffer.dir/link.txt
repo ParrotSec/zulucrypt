@@ -1,2 +1,0 @@
-/usr/bin/ar qc libcrypt_buffer.a  CMakeFiles/crypt_buffer.dir/plugins/network_key/crypt_buffer.c.o CMakeFiles/crypt_buffer.dir/zuluCrypt-cli/utility/socket/socket.c.o
-/usr/bin/ranlib libcrypt_buffer.a

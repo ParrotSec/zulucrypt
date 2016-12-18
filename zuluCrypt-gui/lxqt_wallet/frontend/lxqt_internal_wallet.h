@@ -51,56 +51,73 @@
 
 class QWidget ;
 
-namespace LxQt{
+namespace LXQt{
 
 namespace Wallet{
 
-class internalWallet : public LxQt::Wallet::Wallet
+class internalWallet : public LXQt::Wallet::Wallet
 {
-	Q_OBJECT
 public:
 	internalWallet() ;
 	~internalWallet() ;
+
+	void open( const QString& walletName,
+		   const QString& applicationName,
+		   std::function< void( bool ) >,
+		   QWidget * = nullptr,
+		   const QString& password = QString(),
+		   const QString& displayApplicationName = QString() ) ;
+
+	bool open( const QString& walletName,
+		   const QString& applicationName,
+		   QWidget * = nullptr,
+		   const QString& password = QString(),
+		   const QString& displayApplicationName = QString() ) ;
+
 	bool addKey( const QString& key,const QByteArray& value ) ;
-	void open( const QString& walletName,const QString& applicationName,
-		   const QString& password = QString(),const QString& displayApplicationName = QString() ) ;
-	bool await_open( const QString& walletName,const QString& applicationName,
-			 const QString& password = QString(),const QString& displayApplicationName = QString() ) ;
+	bool opened( void ) ;
+
 	QByteArray readValue( const QString& key ) ;
-	QVector<LxQt::Wallet::walletKeyValues> readAllKeyValues( void ) ;
+
+	QVector< std::pair< QString,QByteArray > > readAllKeyValues( void ) ;
+
 	QStringList readAllKeys( void ) ;
-	void deleteKey( const QString& key ) ;
-	int walletSize( void )  ;
-	void closeWallet( bool ) ;
-	LxQt::Wallet::walletBackEnd backEnd( void ) ;
-	bool walletIsOpened( void ) ;
-	void setInterfaceObject( QWidget * parent ) ;
-	QObject * qObject( void ) ;
-	QString storagePath( void ) ;
-	void changeWalletPassWord( const QString& walletName,const QString& applicationName = QString() ) ;
 	QStringList managedWalletList( void ) ;
+
+	QString storagePath( void ) ;
 	QString localDefaultWalletName( void ) ;
 	QString networkDefaultWalletName( void ) ;
-	void setImage( const QString& ) ;
-signals:
-	void walletIsOpen( bool ) ;
-	void getPassWord( QString ) ;
+
+	void deleteKey( const QString& key ) ;
+	void closeWallet( bool ) ;
+	void changeWalletPassWord( const QString& walletName,
+				   const QString& applicationName = QString(),
+				   std::function< void( bool ) > = []( bool e ){ Q_UNUSED( e ) ; } ) ;
+	void setImage( const QIcon& ) ;
+
+	int walletSize( void )  ;
+
+	LXQt::Wallet::BackEnd backEnd( void ) ;
+	QObject * qObject( void ) ;
 private:
+	void walletIsOpen( bool ) ;
+
 	void openWallet( QString ) ;
 	void createWallet( void ) ;
 	void openWallet() ;
 	void opened( bool ) ;
+
 	lxqt_wallet_t m_wallet ;
+
 	QString m_walletName ;
 	QString m_applicationName ;
 	QString m_displayApplicationName ;
 	QString m_password ;
-	QString m_image ;
-	QWidget * m_interfaceObject ;
 	QEventLoop m_loop ;
 	bool m_opened ;
 
 	std::function< void( bool ) > m_correctPassword = []( bool e ){ Q_UNUSED( e ) } ;
+	std::function< void( bool ) > m_walletOpened = []( bool e ){ Q_UNUSED( e ) ; } ;
 };
 
 }

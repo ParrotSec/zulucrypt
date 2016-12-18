@@ -44,6 +44,8 @@
 #include <initializer_list>
 
 #include <unistd.h>
+#include <sys/vfs.h>
+
 #include "keydialog.h"
 #include "../zuluCrypt-gui/dialogmsg.h"
 #include "../zuluCrypt-gui/tablewidget.h"
@@ -52,12 +54,18 @@
 #include "events.h"
 #include "monitor_mountinfo.h"
 #include "../zuluCrypt-gui/utility.h"
+#include "siritask.h"
 #include "zulumounttask.h"
 #include "../zuluCrypt-gui/task.h"
 #include "../zuluCrypt-gui/checkforupdates.h"
 #include "../zuluCrypt-gui/favorites.h"
 
 #include <memory>
+
+static bool _encrypted_folder( const QString& e,bool f = true )
+{
+	return volumeProperty::encryptedFolder( e,f ) ;
+}
 
 zuluMount::zuluMount( QWidget * parent ) :
 	QWidget( parent ),
@@ -140,95 +148,195 @@ void zuluMount::setUpApp( const QString& volume )
 
 	trayMenu->setFont( this->font() ) ;
 
-	m_autoMountAction = new QAction( this ) ;
 	m_autoMount = this->autoMount() ;
-	m_autoMountAction->setCheckable( true ) ;
-	m_autoMountAction->setChecked( m_autoMount ) ;
-
-	m_autoMountAction->setText( tr( "Automount Volumes" ) ) ;
-
-	connect( m_autoMountAction,SIGNAL( toggled( bool ) ),this,SLOT( autoMountToggled( bool ) ) ) ;
-
-	trayMenu->addAction( m_autoMountAction ) ;
-
-	auto autoOpenFolderOnMount = new QAction( this ) ;
-	autoOpenFolderOnMount->setCheckable( true ) ;
 	m_autoOpenFolderOnMount = this->autoOpenFolderOnMount() ;
-	autoOpenFolderOnMount->setChecked( m_autoOpenFolderOnMount ) ;
-	autoOpenFolderOnMount->setText( tr( "Auto Open Mount Point" ) ) ;
-	connect( autoOpenFolderOnMount,SIGNAL( toggled( bool ) ),this,SLOT( autoOpenFolderOnMount( bool ) ) ) ;
 
-	trayMenu->addAction( autoOpenFolderOnMount ) ;
+	trayMenu->addAction( [ this ](){
 
-	auto ac = new QAction( this ) ;
-	ac->setText( tr( "Unmount All" ) ) ;
-	connect( ac,SIGNAL( triggered() ),this,SLOT( unMountAll() ) ) ;
+		auto ac = new QAction( tr( "Automount Volumes" ),this ) ;
 
-	trayMenu->addAction( ac ) ;
+		m_actionPair.append( { ac,"Automount Volumes" } ) ;
 
-	m_favorite_menu = trayMenu->addMenu( tr( "Favorites" ) ) ;
+		ac->setCheckable( true ) ;
+		ac->setChecked( m_autoMount ) ;
 
-	m_favorite_menu->setFont( this->font() ) ;
+		connect( ac,SIGNAL( toggled( bool ) ),this,SLOT( autoMountToggled( bool ) ) ) ;
 
-	connect( m_favorite_menu,SIGNAL( triggered( QAction * ) ),
-		 this,SLOT( favoriteClicked( QAction * ) ) ) ;
+		m_autoMountAction = ac ;
 
-	connect( m_favorite_menu,SIGNAL( aboutToShow() ),
-		 this,SLOT( showFavorites() ) ) ;
+		return ac ;
+	}() ) ;
 
-	m_not_hidden_volume_menu = trayMenu->addMenu( tr( "Hide Volume From View" ) ) ;
+	trayMenu->addAction( [ this ](){
 
-	m_not_hidden_volume_menu->setFont( this->font() ) ;
+		auto ac = new QAction( tr( "Auto Open Mount Point" ),this ) ;
 
-	connect( m_not_hidden_volume_menu,SIGNAL( triggered( QAction * ) ),
-		 this,SLOT( removeVolumeFromVisibleVolumeList( QAction * ) ) ) ;
+		m_actionPair.append( { ac,"Auto Open Mount Point" } ) ;
 
-	connect( m_not_hidden_volume_menu,SIGNAL( aboutToShow() ),
-		 this,SLOT( showVisibleVolumeList() ) ) ;
+		ac->setCheckable( true ) ;
+		ac->setChecked( m_autoOpenFolderOnMount ) ;
 
-	m_hidden_volume_menu = trayMenu->addMenu( tr( "Unhide Volume From View" ) ) ;
+		connect( ac,SIGNAL( toggled( bool ) ),this,SLOT( autoOpenFolderOnMount( bool ) ) ) ;
 
-	m_hidden_volume_menu->setFont( this->font() ) ;
+		return ac ;
+	}() ) ;
 
-	connect( m_hidden_volume_menu,SIGNAL( triggered( QAction * ) ),
-		 this,SLOT( removeVolumeFromHiddenVolumeList( QAction * ) ) ) ;
+	trayMenu->addAction( [ this ](){
 
-	connect( m_hidden_volume_menu,SIGNAL( aboutToShow() ),
-		 this,SLOT( showHiddenVolumeList() ) ) ;
+		auto ac = new QAction( tr( "Unmount All" ),this ) ;
 
-	m_languageAction = new QAction( this ) ;
-	m_languageAction->setText( tr( "Select Language" ) ) ;
+		m_actionPair.append( { ac,"Unmount All" } ) ;
 
-	trayMenu->addAction( m_languageAction ) ;
-	ac = new QAction( this ) ;
-	ac->setText( tr( "Check For Update" ) ) ;
-	connect( ac,SIGNAL( triggered() ),this,SLOT( updateCheck() ) ) ;
-	trayMenu->addAction( ac ) ;
+		connect( ac,SIGNAL( triggered() ),this,SLOT( unMountAll() ) ) ;
 
-	ac = new QAction( this ) ;
-	ac->setText( tr( "About" ) ) ;
-	connect( ac,SIGNAL( triggered() ),this,SLOT( licenseInfo() ) ) ;
-	trayMenu->addAction( ac ) ;
+		return ac ;
+	}() ) ;
 
-	trayMenu->addAction( tr( "Quit" ),this,SLOT( closeApplication() ) ) ;
-	m_trayIcon.setContextMenu( trayMenu ) ;
+	m_favorite_menu = [ this,trayMenu ](){
+
+		auto m = trayMenu->addMenu( tr( "Favorites" ) ) ;
+
+		m_menuPair.append( { m,"Favorites" } ) ;
+
+		m->setFont( this->font() ) ;
+
+		connect( m,SIGNAL( triggered( QAction * ) ),
+			 this,SLOT( favoriteClicked( QAction * ) ) ) ;
+
+		connect( m,SIGNAL( aboutToShow() ),
+			 this,SLOT( showFavorites() ) ) ;
+
+		return m ;
+	}() ;
+
+	m_not_hidden_volume_menu = [ this,trayMenu ](){
+
+		auto m = trayMenu->addMenu( tr( "Hide Volume From View" ) ) ;
+
+		m_menuPair.append( { m,"Hide Volume From View" } ) ;
+
+		m->setFont( this->font() ) ;
+
+		connect( m,SIGNAL( triggered( QAction * ) ),
+			 this,SLOT( removeVolumeFromVisibleVolumeList( QAction * ) ) ) ;
+
+		connect( m,SIGNAL( aboutToShow() ),
+			 this,SLOT( showVisibleVolumeList() ) ) ;
+
+		return m ;
+	}() ;
+
+	m_hidden_volume_menu = [ this,trayMenu ](){
+
+		auto m = trayMenu->addMenu( tr( "Unhide Volume From View" ) ) ;
+
+		m_menuPair.append( { m,"Unhide Volume From View" } ) ;
+
+		m->setFont( this->font() ) ;
+
+		connect( m,SIGNAL( triggered( QAction * ) ),
+			 this,SLOT( removeVolumeFromHiddenVolumeList( QAction * ) ) ) ;
+
+		connect( m,SIGNAL( aboutToShow() ),
+			 this,SLOT( showHiddenVolumeList() ) ) ;
+
+		return m ;
+	}() ;
+
+	m_language_menu = [ this,trayMenu ](){
+
+		auto m = trayMenu->addMenu( tr( "Select Language" ) ) ;
+
+		m_menuPair.append( { m,"Select Language" } ) ;
+
+		connect( m,SIGNAL( triggered( QAction * ) ),this,SLOT( languageMenu( QAction * ) ) ) ;
+
+		return m ;
+	}() ;
+
+	trayMenu->addMenu( [ this ](){
+
+		auto ac = new QAction( tr( "Select Icons" ),this ) ;
+
+		m_actionPair.append( { ac,"Select Icons" } ) ;
+
+		utility::setIconMenu( "zuluMount",ac,this,[ this ]( const QString& e ){
+
+			utility::setIcons( "zuluMount",e ) ;
+
+			this->setIcons() ;
+		} ) ;
+
+		this->setIcons() ;
+
+		return ac->menu() ;
+	}() ) ;
+
+	trayMenu->addAction( [ this ](){
+
+		auto ac = new QAction( tr( "Check For Update" ),this ) ;
+
+		m_actionPair.append( { ac,"Check For Update" } ) ;
+		
+		connect( ac,SIGNAL( triggered() ),this,SLOT( updateCheck() ) ) ;
+
+		return ac ;
+	}() ) ;
+
+	trayMenu->addAction( [ this ](){
+
+		auto ac = new QAction( tr( "About" ),this ) ;
+
+		m_actionPair.append( { ac,"About" } ) ;
+
+		connect( ac,SIGNAL( triggered() ),this,SLOT( licenseInfo() ) ) ;
+
+		return ac ;
+	}() ) ;
+
+	auto _addQuitAction = [ this ](){
+
+		auto ac = new QAction( tr( "Quit" ),this ) ;
+
+		m_actionPair.append( { ac,"Quit" } ) ;
+
+		connect( ac,SIGNAL( triggered() ),this,SLOT( closeApplication() ) ) ;
+
+		return ac ;
+	} ;
+
+	trayMenu->addAction( _addQuitAction() ) ;
 
 	connect( &m_trayIcon,SIGNAL( activated( QSystemTrayIcon::ActivationReason ) ),
 		 this,SLOT( slotTrayClicked( QSystemTrayIcon::ActivationReason ) ) ) ;
 
-	m_ui->pbmenu->setMenu( m_trayIcon.contextMenu() ) ;
+	m_trayIcon.setContextMenu( [ this,&_addQuitAction ](){
+
+		auto m = new QMenu( this ) ;
+
+		m->addAction( [ this ](){
+
+			auto ac = new QAction( tr( "Show/Hide" ),this ) ;
+
+			m_actionPair.append( { ac,"Show/Hide" } ) ;
+
+			connect( ac,SIGNAL( triggered() ),this,SLOT( showTrayGUI() ) ) ;
+
+			return ac ;
+		}() ) ;
+
+		m->addAction( _addQuitAction() ) ;
+
+		return m ;
+	}() ) ;
+
+	m_secrets.setParent( this ) ;
+
+	m_ui->pbmenu->setMenu( trayMenu ) ;
 
 	this->setLocalizationLanguage( false ) ;
 
 	m_trayIcon.show() ;
-
-	auto dirPath = utility::homePath() + "/.zuluCrypt/" ;
-	QDir dir( dirPath ) ;
-
-	if( !dir.exists() ){
-
-		dir.mkdir( dirPath ) ;
-	}
 
 	m_powerOff = utility::powerOffCommand() ;
 
@@ -246,6 +354,20 @@ void zuluMount::setUpApp( const QString& volume )
 	}
 
 	this->autoUpdateCheck() ;
+}
+
+void zuluMount::showTrayGUI()
+{
+	this->slotTrayClicked( QSystemTrayIcon::Trigger ) ;
+}
+
+void zuluMount::setIcons()
+{
+	const auto& icon = utility::getIcon( "zuluMount" ) ;
+
+	m_trayIcon.setIcon( icon ) ;
+
+	this->setWindowIcon( icon ) ;
 }
 
 void zuluMount::licenseInfo()
@@ -283,11 +405,14 @@ static void _manage_volume_list( QMenu * menu,const QStringList& l )
 
 	if( l.isEmpty() ){
 
-		auto ac = new QAction( QObject::tr( "List Is Empty" ),menu ) ;
+		menu->addAction( [ &menu ](){
 
-		ac->setEnabled( false ) ;
+			auto ac = new QAction( QObject::tr( "List Is Empty" ),menu ) ;
 
-		menu->addAction( ac ) ;
+			ac->setEnabled( false ) ;
+
+			return ac ;
+		}() ) ;
 	}else{
 		for( const auto& it : l ){
 
@@ -304,13 +429,12 @@ void zuluMount::showHiddenVolumeList()
 void zuluMount::showVisibleVolumeList()
 {
 	_manage_volume_list( m_not_hidden_volume_menu,
-			     tablewidget::tableColumnEntries( m_ui->tableWidget ) ) ;
+			     tablewidget::columnEntries( m_ui->tableWidget ) ) ;
 }
 
 void zuluMount::removeVolumeFromVisibleVolumeList( QAction * ac )
 {
-	auto e = ac->text() ;
-	e.remove( "&" ) ;
+	auto e = ac->text().remove( "&" ) ;
 
 	auto table = m_ui->tableWidget ;
 
@@ -320,7 +444,7 @@ void zuluMount::removeVolumeFromVisibleVolumeList( QAction * ac )
 
 	tablewidget::selectRow( table,e ) ;
 	utility::Task::suspendForOneSecond() ;
-	tablewidget::deleteTableRow( table,e ) ;
+	tablewidget::deleteRow( table,e ) ;
 
 	tablewidget::selectLastRow( table ) ;
 
@@ -381,12 +505,24 @@ void zuluMount::showFavorites()
 
 void zuluMount::setLocalizationLanguage( bool translate )
 {
-	utility::setLocalizationLanguage( translate,this,m_languageAction,"zuluMount-gui" ) ;
+	utility::setLocalizationLanguage( translate,m_language_menu,"zuluMount-gui" ) ;
 }
 
 void zuluMount::languageMenu( QAction * ac )
 {
-	utility::languageMenu( this,m_languageAction->menu(),ac,"zuluMount-gui" ) ;
+	utility::languageMenu( this,m_language_menu,ac,"zuluMount-gui" ) ;
+
+	m_ui->retranslateUi( this ) ;
+
+	for( auto& it : m_actionPair ){
+
+		it.first->setText( tr( it.second ) ) ;
+	}
+
+	for( auto& it : m_menuPair ){
+
+		it.first->setTitle( tr( it.second ) ) ;
+	}
 }
 
 void zuluMount::autoOpenFolderOnMount( bool e )
@@ -420,9 +556,9 @@ void zuluMount::quitApplication()
 	QCoreApplication::quit() ;
 }
 
-void zuluMount::autoMountVolume( volumeEntryProperties * q )
+void zuluMount::autoMountVolume( volumeProperty * q )
 {
-	std::unique_ptr< volumeEntryProperties > r( q ) ;
+	std::unique_ptr< volumeProperty > r( q ) ;
 
 	if( r && r->isValid() ){
 
@@ -459,7 +595,7 @@ void zuluMount::volumeRemoved( QString volume )
 
 		if( row != -1 ){
 
-			tablewidget::deleteRowFromTable( table,row ) ;
+			tablewidget::deleteRow( table,row ) ;
 			/*
 			* see if a user just removed the device without properly closing it/unmounting it
 			* and try to do so for them
@@ -479,7 +615,7 @@ void zuluMount::removeVolume( QString volume )
 		tablewidget::selectLastRow( m_ui->tableWidget ) ;
 		this->enableAll() ;
 	}else{
-		tablewidget::deleteTableRow( m_ui->tableWidget,volume ) ;
+		tablewidget::deleteRow( m_ui->tableWidget,volume ) ;
 	}
 }
 
@@ -565,6 +701,8 @@ void zuluMount::Show()
 
 	utility::setUID( utility::cmdArgumentValue( l,"-K","-1" ).toInt() ) ;
 
+	utility::createHomeFolder() ;
+
 	auto volume = utility::cmdArgumentValue( l,"-d" ) ;
 
 	oneinstance::instance( this,"zuluMount-gui.socket","startGUI",volume,[ this,volume ]( QObject * instance ){
@@ -574,6 +712,107 @@ void zuluMount::Show()
 
 		this->setUpApp( volume ) ;
 	} ) ;
+}
+
+void zuluMount::cryfsVolumeProperties()
+{
+	this->disableAll() ;
+
+	auto mountPath = [ this ](){
+
+		auto table = m_ui->tableWidget ;
+
+		auto row = table->currentRow() ;
+
+		if( row >= 0 ){
+
+			return table->item( row,1 )->text() ;
+		}else{
+			return QString() ;
+		}
+	}() ;
+
+	DialogMsg msg( this ) ;
+
+	struct statfs vfs ;
+
+	if( Task::await< int >( [ & ](){ return statfs( mountPath.toLatin1().constData(),&vfs ) ; } ) ){
+
+		msg.ShowUIOK( tr( "ERROR" ),tr( "Failed To Read Volume Properties" ) ) ;
+
+		return this->enableAll() ;
+	}
+
+	msg.ShowUIInfo( tr( "INFORMATION" ),true,[ & ](){
+
+		return QString( [ this ](){
+
+			auto l = { tr( "Block Size: %1" ),
+				   tr( "Used Blocks: %2" ),
+				   tr( "Free Blocks: %3" ),
+				   tr( "Total Blocks %4" ),
+				   tr( "Used Space: %5" ),
+				   tr( "Free Space: %6" ),
+				   tr( "Total Space: %7" ),
+				   tr( "Used %: %8" ) } ;
+
+			QString e ;
+
+			for( const auto& it : l ){
+
+				e += it + "\n\n" ;
+			}
+
+			e.truncate( e.size() - 2 ) ;
+
+			return e ;
+
+		}() ).arg( [ & ](){
+
+			return utility::prettyfySpaceUsage( vfs.f_bsize ) ;
+
+		}(),[ & ](){
+
+			return QString::number( vfs.f_blocks - vfs.f_bavail ) ;
+
+		}(),[ & ](){
+
+			return QString::number( vfs.f_bfree ) ;
+
+		}(),[ & ](){
+
+			return QString::number( vfs.f_blocks ) ;
+
+		}(),[ & ](){
+
+			auto s = vfs.f_bsize * ( vfs.f_blocks - vfs.f_bavail ) ;
+
+			return utility::prettyfySpaceUsage( s ) ;
+
+		}(),[ & ](){
+
+			return utility::prettyfySpaceUsage( vfs.f_bsize * vfs.f_bavail ) ;
+
+		}(),[ & ](){
+
+			return utility::prettyfySpaceUsage( vfs.f_bsize * vfs.f_blocks ) ;
+
+		}(),[ & ]()->QString{
+
+			if( vfs.f_bfree == 0 ){
+
+				return "100%" ;
+			}else{
+				quint64 s = vfs.f_blocks - vfs.f_bavail ;
+
+				auto e = double( s ) / double( vfs.f_blocks ) ;
+
+				return QString::number( e * 100,'g',2 ) + "%" ;
+			}
+		}() ) ;
+	}() ) ;
+
+	this->enableAll() ;
 }
 
 void zuluMount::showContextMenu( QTableWidgetItem * item,bool itemClicked )
@@ -597,15 +836,23 @@ void zuluMount::showContextMenu( QTableWidgetItem * item,bool itemClicked )
 
 	auto _properties_menu = [ & ]( const QString& fs,bool addSeparator ){
 
-		if( fs != "encfs" && fs != "cryfs" ){
+		if( _encrypted_folder( fs ) ){
 
+			if( fs == "cryfs" ){
+
+				connect( m.addAction( tr( "Properties" ) ),SIGNAL( triggered() ),
+					 this,SLOT( cryfsVolumeProperties() ) ) ;
+			}else{
+				m.addAction( tr( "Properties" ) )->setEnabled( false ) ;
+			}
+		}else{
 			connect( m.addAction( tr( "Properties" ) ),SIGNAL( triggered() ),
 				 this,SLOT( volumeProperties() ) ) ;
+		}
 
-			if( addSeparator ){
+		if( addSeparator ){
 
-				m.addSeparator() ;
-			}
+			m.addSeparator() ;
 		}
 	} ;
 
@@ -618,17 +865,6 @@ void zuluMount::showContextMenu( QTableWidgetItem * item,bool itemClicked )
 
 		if( mt.startsWith( mp ) || mt.startsWith( mp_1 ) ){
 
-			connect( m.addAction( tr( "Unmount" ) ),SIGNAL( triggered() ),this,SLOT( pbUmount() ) ) ;
-
-			if( !m_powerOff.isEmpty() && fs != "encfs" && fs != "cryfs" && ( device.startsWith( "/dev/sd" ) || device.startsWith( "/dev/hd" ) ) ){
-
-				connect( m.addAction( tr( "Unmount + Power Down" ) ),SIGNAL( triggered() ),this,SLOT( pbUmount_powerDown() ) ) ;
-			}
-
-			m.addSeparator() ;
-
-			_properties_menu( fs,true ) ;
-
 			m_sharedFolderPath = utility::sharedMountPointPath( mt ) ;
 
 			if( m_sharedFolderPath.isEmpty() ){
@@ -640,6 +876,17 @@ void zuluMount::showContextMenu( QTableWidgetItem * item,bool itemClicked )
 					 this,SLOT( slotOpenFolder() ) ) ;
 				connect( m.addAction( tr( "Open Shared Folder" ) ),SIGNAL( triggered() ),
 					 this,SLOT( slotOpenSharedFolder() ) ) ;
+			}			
+
+			m.addSeparator() ;
+
+			_properties_menu( fs,true ) ;
+
+			connect( m.addAction( tr( "Unmount" ) ),SIGNAL( triggered() ),this,SLOT( pbUmount() ) ) ;
+
+			if( !m_powerOff.isEmpty() && !_encrypted_folder( fs ) && ( device.startsWith( "/dev/sd" ) || device.startsWith( "/dev/hd" ) ) ){
+
+				connect( m.addAction( tr( "Unmount + Power Down" ) ),SIGNAL( triggered() ),this,SLOT( pbUmount_powerDown() ) ) ;
 			}
 		}else{
 			m_sharedFolderPath = utility::sharedMountPointPath( mt ) ;
@@ -648,18 +895,22 @@ void zuluMount::showContextMenu( QTableWidgetItem * item,bool itemClicked )
 
 				if( utility::pathIsReadable( mt ) ){
 
-					_properties_menu( fs,true ) ;
-
 					connect( m.addAction( tr( "Open Folder" ) ),SIGNAL( triggered() ),
 						 this,SLOT( slotOpenFolder() ) ) ;
+
+					m.addSeparator() ;
+
+					_properties_menu( fs,false ) ;
 				}else{
 					_properties_menu( fs,false ) ;
 				}
 			}else{
-				_properties_menu( fs,true ) ;
-
 				connect( m.addAction( tr( "Open Shared Folder" ) ),SIGNAL( triggered() ),
 					 this,SLOT( slotOpenSharedFolder() ) ) ;
+
+				m.addSeparator() ;
+
+				_properties_menu( fs,true ) ;
 			}
 		}
 	}
@@ -686,14 +937,19 @@ void zuluMount::itemClicked( QTableWidgetItem * item )
 
 void zuluMount::defaultButton()
 {
-	auto row = m_ui->tableWidget->currentRow() ;
-	auto mt = m_ui->tableWidget->item( row,1 )->text() ;
+	auto table = m_ui->tableWidget ;
 
-	if( mt == "Nil" ){
+	if( table->rowCount() > 0 ){
 
-		this->slotMount() ;
-	}else{
-		this->showContextMenu( m_ui->tableWidget->currentItem(),false ) ;
+		auto row = m_ui->tableWidget->currentRow() ;
+		auto mt = m_ui->tableWidget->item( row,1 )->text() ;
+
+		if( mt == "Nil" ){
+
+			this->slotMount() ;
+		}else{
+			this->showContextMenu( m_ui->tableWidget->currentItem(),false ) ;
+		}
 	}
 }
 
@@ -757,41 +1013,26 @@ void zuluMount::volumeProperties()
 
 void zuluMount::setUpShortCuts()
 {
-	auto ac = new QAction( this ) ;
-	QList<QKeySequence> keys ;
-	keys.append( Qt::Key_Enter ) ;
-	keys.append( Qt::Key_Return ) ;
-	ac->setShortcuts( keys ) ;
-	connect( ac,SIGNAL( triggered() ),this,SLOT( defaultButton() ) ) ;
-	this->addAction( ac ) ;
+	auto _addAction = [ this ]( std::initializer_list<QKeySequence> s,const char * slot ){
 
-	auto qa = new QAction( this ) ;
-	QList<QKeySequence> z ;
-	z.append( Qt::Key_M ) ;
-	qa->setShortcuts( z ) ;
-	connect( qa,SIGNAL( triggered() ),this,SLOT( pbMount() ) ) ;
-	this->addAction( qa ) ;
+		auto ac = new QAction( this ) ;
 
-	qa = new QAction( this ) ;
-	QList<QKeySequence> p ;
-	p.append( Qt::Key_U ) ;
-	qa->setShortcuts( p ) ;
-	connect( qa,SIGNAL( triggered() ),this,SLOT( pbUmount() ) ) ;
-	this->addAction( qa ) ;
+		ac->setShortcuts( s ) ;
 
-	qa = new QAction( this ) ;
-	QList<QKeySequence> q ;
-	q.append( Qt::Key_R ) ;
-	qa->setShortcuts( q ) ;
-	connect( qa,SIGNAL( triggered() ),this,SLOT( pbUpdate() ) ) ;
-	this->addAction( qa ) ;
+		connect( ac,SIGNAL( triggered() ),this,slot ) ;
 
-	qa = new QAction( this ) ;
-	QList<QKeySequence> e ;
-	e.append( Qt::Key_C ) ;
-	qa->setShortcuts( e ) ;
-	connect( qa,SIGNAL( triggered() ),this,SLOT( closeApplication() ) ) ;
-	this->addAction( qa ) ;
+		return ac ;
+	} ;
+
+	this->addAction( _addAction( { Qt::Key_Enter,Qt::Key_Return },SLOT( defaultButton() ) ) ) ;
+
+	this->addAction( _addAction( { Qt::Key_M },SLOT( pbMount() ) ) ) ;
+
+	this->addAction( _addAction( { Qt::Key_U },SLOT( pbUmount() ) ) ) ;
+
+	this->addAction( _addAction( { Qt::Key_R },SLOT( pbUpdate() ) ) ) ;
+
+	this->addAction( _addAction( { Qt::Key_C },SLOT( closeApplication() ) ) ) ;
 }
 
 void zuluMount::setUpFont()
@@ -836,13 +1077,13 @@ void zuluMount::dropEvent( QDropEvent * e )
 	}
 }
 
-void zuluMount::mount( const volumeEntryProperties& entry )
+void zuluMount::mount( const volumeProperty& entry )
 {
 	this->disableAll() ;
 
 	if( entry.encryptedVolume() ){
 
-		keyDialog::instance( this,m_ui->tableWidget,entry,[ this ](){
+		keyDialog::instance( this,m_ui->tableWidget,m_secrets,entry,[ this ](){
 
 			this->enableAll() ;
 
@@ -869,10 +1110,10 @@ void zuluMount::slotMount()
 	auto table = m_ui->tableWidget ;
 	auto row = table->currentRow() ;
 
-	this->mount( tablewidget::tableRowEntries( table,row ) ) ;
+	this->mount( tablewidget::rowEntries( table,row ) ) ;
 }
 
-void zuluMount::showMoungDialog( const volumeEntryProperties& v )
+void zuluMount::showMoungDialog( const volumeProperty& v )
 {
 	if( v.isEmpty() ){
 
@@ -918,12 +1159,23 @@ void zuluMount::unlockCryptFs()
 {
 	this->disableAll() ;
 
-	auto path = QFileDialog::getExistingDirectory( this,tr( "Select An Encfs Volume Directory" ),utility::homePath(),QFileDialog::ShowDirsOnly ) ;
+	auto path = QFileDialog::getExistingDirectory( this,tr( "Select An Encrypted Volume Directory" ),
+						       utility::homePath(),QFileDialog::ShowDirsOnly ) ;
 
 	if( path.isEmpty() ){
 
 		this->enableAll() ;
 	}else{
+		while( true ){
+
+			if( path.endsWith( '/' ) ){
+
+				path.truncate( path.length() - 1 ) ;
+			}else{
+				break ;
+			}
+		}
+
 		this->showMoungDialog( path ) ;
 	}
 }
@@ -940,13 +1192,13 @@ void zuluMount::addEntryToTable( bool systemVolume,const QStringList& l )
 {
 	if( systemVolume ){
 
-		tablewidget::addRowToTable( m_ui->tableWidget,l,this->getSystemVolumeFont() ) ;
+		tablewidget::addRow( m_ui->tableWidget,l,this->getSystemVolumeFont() ) ;
 	}else{
-		tablewidget::addRowToTable( m_ui->tableWidget,l ) ;
+		tablewidget::addRow( m_ui->tableWidget,l ) ;
 	}
 }
 
-void zuluMount::addEntryToTable( bool systemVolume,const volumeEntryProperties& e )
+void zuluMount::addEntryToTable( bool systemVolume,const volumeProperty& e )
 {
 	this->addEntryToTable( systemVolume,e.entryList() ) ;
 }
@@ -959,16 +1211,16 @@ void zuluMount::removeEntryFromTable( QString volume )
 
 	if( r != -1 ){
 
-		tablewidget::deleteRowFromTable( table,r ) ;
+		tablewidget::deleteRow( table,r ) ;
 		this->enableAll() ;
 	}else{
 		this->pbUpdate() ;
 	}
 }
 
-void zuluMount::volumeMiniProperties( bool valid,volumeEntryProperties * e )
+void zuluMount::volumeMiniProperties( bool valid,volumeProperty * e )
 {
-	std::unique_ptr< volumeEntryProperties > volumeInfo( e ) ;
+	std::unique_ptr< volumeProperty > volumeInfo( e ) ;
 
 	this->disableAll() ;
 
@@ -981,17 +1233,17 @@ void zuluMount::volumeMiniProperties( bool valid,volumeEntryProperties * e )
 	}
 }
 
-void zuluMount::volumeMiniProperties( volumeEntryProperties * volumeInfo )
+void zuluMount::volumeMiniProperties( volumeProperty * volumeInfo )
 {
 	this->volumeMiniProperties( volumeInfo,volumeInfo ) ;
 }
 
-void zuluMount::volumeMiniProperties_0( volumeEntryProperties * volumeInfo )
+void zuluMount::volumeMiniProperties_0( volumeProperty * volumeInfo )
 {
 	this->volumeMiniProperties( volumeInfo && volumeInfo->mounted(),volumeInfo ) ;
 }
 
-void zuluMount::updateList( const volumeEntryProperties& entry )
+void zuluMount::updateList( const volumeProperty& entry )
 {
 	if( entry.isValid() ){
 
@@ -1001,13 +1253,13 @@ void zuluMount::updateList( const volumeEntryProperties& entry )
 
 		if( row == -1 ){
 
-			row = tablewidget::addEmptyRow( table ) ;
+			row = tablewidget::addRow( table ) ;
 		}
 		if( entry.isSystem() ){
 
-			tablewidget::updateRowInTable( table,entry.entryList(),row,this->getSystemVolumeFont() ) ;
+			tablewidget::updateRow( table,entry.entryList(),row,this->getSystemVolumeFont() ) ;
 		}else{
-			tablewidget::updateRowInTable( table,entry.entryList(),row,this->font() ) ;
+			tablewidget::updateRow( table,entry.entryList(),row,this->font() ) ;
 		}
 
 		tablewidget::selectRow( table,row ) ;
@@ -1054,17 +1306,18 @@ void zuluMount::unmount( const QString& e )
 
 	auto row = m_ui->tableWidget->currentRow() ;
 
-	auto path = m_ui->tableWidget->item( row,0 )->text() ;
-	auto type = m_ui->tableWidget->item( row,2 )->text() ;
+	auto path      = m_ui->tableWidget->item( row,0 )->text() ;
+	auto mountPath = m_ui->tableWidget->item( row,1 )->text() ;
+	auto type      = m_ui->tableWidget->item( row,2 )->text() ;
 
-	if( type == "encfs" || type == "cryfs" ){
+	if( _encrypted_folder( type ) ){
 
-		auto m = m_ui->tableWidget->item( row,1 )->text() ;
+		if( siritask::encryptedFolderUnMount( path,mountPath,type ).await() ){
 
-		if( !zuluMountTask::encryptedFolderUnMount( m ).await() ){
-
+			siritask::deleteMountFolder( mountPath ) ;
+		}else{
 			DialogMsg m( this ) ;
-			m.ShowUIOK( tr( "ERROR" ),tr( "Failed to unmount encfs/cryfs volume" ) ) ;
+			m.ShowUIOK( tr( "ERROR" ),tr( "Failed to unmount volume" ) ) ;
 			this->enableAll() ;
 		}
 	}else{
@@ -1105,59 +1358,47 @@ void zuluMount::unMountAll()
 
 	auto table = m_ui->tableWidget ;
 
-	using list_t = decltype( tablewidget::tableColumnEntries( table,1 ) ) ;
-
-	list_t x = tablewidget::tableColumnEntries( table,1 ) ;
-	list_t y = tablewidget::tableColumnEntries( table,0 ) ;
-	list_t z = tablewidget::tableColumnEntries( table,2 ) ;
-
-	list_t p ;
-	list_t q ;
-	list_t n ;
-
-	auto a = utility::userName() ;
-	auto b = utility::mountPath( QString() ) ;
-	auto c = utility::homeMountPath( QString() ) ;
-
-	auto k = x.size() ;
-
-	for( decltype( k ) i = 0 ; i < k ; i++ ){
-
-		const auto& e = x.at( i ) ;
-
-		if( e.startsWith( b ) || e.startsWith( c ) ){
-
-			p.append( y.at( i ) ) ;
-			q.append( z.at( i ) ) ;
-			n.append( e ) ;
-		}
-	}
-
 	m_removeAllVolumes = true ;
 
-	Task::await( [ & ](){
+	auto paths       = tablewidget::columnEntries( table,0 ) ;
+	auto mountPoints = tablewidget::columnEntries( table,1 ) ;
+	auto fileSystems = tablewidget::columnEntries( table,2 ) ;
 
-		if( p.isEmpty() ){
+	auto mountPath = utility::mountPath( QString() ) ;
+	auto homeMountPath = utility::homeMountPath( QString() ) ;
 
-			utility::Task::waitForOneSecond() ;
-		}else{
-			for( decltype( p.size() ) i = p.size() - 1 ; i >= 0 ; i-- ){
+	int r = paths.size() - 1 ;
 
-				const auto& e = q.at( i ) ;
+	if( r < 0 ){
 
-				if( e == "encfs" || e == "cryfs" ){
+		utility::Task::suspendForOneSecond() ;
+	}else{
+		do{
+			const auto& a = paths.at( r ) ;
+			const auto& b = mountPoints.at( r ) ;
+			const auto& c = fileSystems.at( r ) ;
 
-					zuluMountTask::encryptedFolderUnMount( n.at( i ) ).get() ;
+			if( utility::startsWithAtLeastOne( b,mountPath,homeMountPath ) ){
+
+				if( _encrypted_folder( c ) ){
+
+					if( siritask::encryptedFolderUnMount( a,b,c ).await() ){
+
+						siritask::deleteMountFolder( b ) ;
+					}
 				}else{
-					zuluMountTask::volumeUnmount( p.at( i ),e ) ;
+					zuluMountTask::unmountVolume( a,c ).await() ;
 				}
 
-				utility::Task::waitForOneSecond() ;
+				utility::Task::suspendForOneSecond() ;
 			}
 
-			utility::Task::waitForTwoSeconds() ;
-		}
-	} ) ;
+			r-- ;
+
+		}while( r >= 0 ) ;
+
+		utility::Task::suspendForOneSecond() ;
+	}
 
 	this->enableAll_1() ;
 }
@@ -1173,7 +1414,7 @@ void zuluMount::pbUpdate()
 	this->removeDisappearedEntries( r ) ;
 }
 
-void zuluMount::updateVolumeList( const QVector< volumeEntryProperties >& r )
+void zuluMount::updateVolumeList( const QVector< volumeProperty >& r )
 {
 	if( r.isEmpty() ){
 
@@ -1193,7 +1434,7 @@ void zuluMount::updateVolumeList( const QVector< volumeEntryProperties >& r )
 	}
 }
 
-void zuluMount::removeDisappearedEntries( const QVector< volumeEntryProperties >& entries )
+void zuluMount::removeDisappearedEntries( const QVector< volumeProperty >& entries )
 {
 	/*
 	 * Below routine removes an entries from the table if they are found not to be
@@ -1208,15 +1449,15 @@ void zuluMount::removeDisappearedEntries( const QVector< volumeEntryProperties >
 
 	auto table = m_ui->tableWidget ;
 
-	auto l = tablewidget::tableColumnEntries( table,0 ) ;
+	auto l = tablewidget::columnEntries( table,0 ) ;
 
-	auto _hasNoEntry = [&]( const QString& volume ){
+	auto _hasNoEntry = [ & ]( const QString& volume ){
 
 		for( const auto& it : entries ){
 
 			if( it.volumeName() == volume ){
 
-				if( it.fileSystem() == "encfs" || it.fileSystem() == "cryfs" ){
+				if( _encrypted_folder( it.fileSystem(),false ) ){
 
 					return false ;
 				}
@@ -1256,7 +1497,7 @@ void zuluMount::removeDisappearedEntries( const QVector< volumeEntryProperties >
 
 			tablewidget::selectRow( table,e ) ;
 			utility::Task::suspendForOneSecond() ;
-			tablewidget::deleteTableRow( table,e ) ;
+			tablewidget::deleteRow( table,e ) ;
 		}
 
 		utility::Task::suspendForOneSecond() ;
@@ -1266,7 +1507,7 @@ void zuluMount::removeDisappearedEntries( const QVector< volumeEntryProperties >
 
 void zuluMount::slotCurrentItemChanged( QTableWidgetItem * current,QTableWidgetItem * previous )
 {
-	tablewidget::selectTableRow( current,previous ) ;
+	tablewidget::selectRow( current,previous ) ;
 }
 
 void zuluMount::disableAll()

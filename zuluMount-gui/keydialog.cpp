@@ -35,12 +35,13 @@
 #include "../zuluCrypt-cli/constants.h"
 #include "plugin_path.h"
 #include "../zuluCrypt-gui/utility.h"
-#include "../zuluCrypt-gui/lxqt_wallet/frontend/lxqt_wallet.h"
+#include "lxqt_wallet.h"
 #include "mountoptions.h"
 #include "../zuluCrypt-gui/tcrypt.h"
 #include "zulumounttask.h"
 #include "../zuluCrypt-gui/task.h"
 #include "zulumounttask.h"
+#include "siritask.h"
 #include "veracrypt_support.h"
 #include "truecrypt_support.h"
 #include "veracryptpimdialog.h"
@@ -49,13 +50,17 @@
 #define INTERNAL_WALLET "internal wallet"
 #define GNOME_WALLET    "gnome wallet"
 
-/*
- * this ugly global variable is defined in zulucrypt.cpp to prevent multiple prompts when opening multiple volumes
- */
-static QString _internalPassWord ;
-
-keyDialog::keyDialog( QWidget * parent,QTableWidget * table,const volumeEntryProperties& e,std::function< void() > p,std::function< void( const QString& ) > q ) :
-	QDialog( parent ),m_ui( new Ui::keyDialog ),m_cancel( std::move( p ) ),m_success( std::move( q ) )
+keyDialog::keyDialog( QWidget * parent,
+		      QTableWidget * table,
+		      secrets& s,
+		      const volumeProperty& e,
+		      std::function< void() > p,
+		      std::function< void( const QString& ) > q ) :
+	QDialog( parent ),
+	m_ui( new Ui::keyDialog ),
+	m_secrets( s ),
+	m_cancel( std::move( p ) ),
+	m_success( std::move( q ) )
 {
 	m_ui->setupUi( this ) ;
 	m_ui->checkBoxShareMountPoint->setToolTip( utility::shareMountPointToolTip() ) ;
@@ -122,11 +127,14 @@ keyDialog::keyDialog( QWidget * parent,QTableWidget * table,const volumeEntryPro
 
 	m_ui->lineEditMountPoint->setText( m_point ) ;
 
-	auto ac = new QAction( this ) ;
-	QKeySequence s( Qt::CTRL + Qt::Key_F ) ;
-	ac->setShortcut( s ) ;
-	connect( ac,SIGNAL( triggered() ),this,SLOT( showOffSetWindowOption() ) ) ;
-	this->addAction( ac ) ;
+	this->addAction( [ this ](){
+
+		auto ac = new QAction( this ) ;
+		ac->setShortcut( Qt::CTRL + Qt::Key_F ) ;
+		connect( ac,SIGNAL( triggered() ),this,SLOT( showOffSetWindowOption() ) ) ;
+
+		return ac ;
+	}() ) ;
 
 	m_menu_1 = new QMenu( this ) ;
 
@@ -138,7 +146,7 @@ keyDialog::keyDialog( QWidget * parent,QTableWidget * table,const volumeEntryPro
 
 		auto _add_action = [ & ]( const QString& e ){
 
-			ac = m_menu_1->addAction( e ) ;
+			m_menu_1->addAction( e ) ;
 		} ;
 
 		_add_action( tr( "Set File System Options" ) ) ;
@@ -168,32 +176,6 @@ keyDialog::keyDialog( QWidget * parent,QTableWidget * table,const volumeEntryPro
 bool keyDialog::eventFilter( QObject * watched,QEvent * event )
 {
 	return utility::eventFilter( this,watched,event,[ this ](){ this->pbCancel() ; } ) ;
-}
-
-void keyDialog::tcryptGui()
-{
-	this->disableAll() ;
-	m_ui->lineEditKey->setText( QString() ) ;
-
-	tcrypt::instance( this,false,[ this ]( const QString& key,const QStringList& keyFiles ){
-
-		m_key = key.toLatin1() ;
-		m_keyFiles = keyFiles ;
-
-		this->openVolume() ;
-
-		m_ui->cbKeyType->setCurrentIndex( keyDialog::Key ) ;
-		m_ui->lineEditKey->setText( QString() ) ;
-		m_ui->lineEditKey->setEnabled( false ) ;
-
-	},[ this ](){
-
-		m_key.clear() ;
-		m_keyFiles.clear() ;
-		m_ui->cbKeyType->setCurrentIndex( keyDialog::Key ) ;
-		m_ui->lineEditKey->setText( QString() ) ;
-		this->enableAll() ;
-	} ) ;
 }
 
 void keyDialog::pbOptions()
@@ -277,6 +259,16 @@ void keyDialog::pbMountPointPath()
 
 	if( !Z.isEmpty() ){
 
+		while( true ){
+
+			if( Z.endsWith( '/' ) ){
+
+				Z.truncate( Z.length() - 1 ) ;
+			}else{
+				break ;
+			}
+		}
+
 		Z = Z + "/" + m_ui->lineEditMountPoint->text().split( "/" ).last() ;
 		m_ui->lineEditMountPoint->setText( Z ) ;
 	}
@@ -294,9 +286,11 @@ void keyDialog::enableAll()
 	m_ui->label->setEnabled( true ) ;
 	m_ui->cbKeyType->setEnabled( true ) ;
 
-	m_ui->lineEditKey->setEnabled( m_ui->cbKeyType->currentIndex() == keyDialog::Key ) ;
+	auto index = m_ui->cbKeyType->currentIndex() ;
 
-	m_ui->pbkeyOption->setEnabled( true ) ;
+	m_ui->lineEditKey->setEnabled( index == keyDialog::Key ) ;
+
+	m_ui->pbkeyOption->setEnabled( index == keyDialog::Key || index == keyDialog::keyfile ) ;
 	m_ui->checkBoxOpenReadOnly->setEnabled( true ) ;
 
 	m_ui->checkBoxShareMountPoint->setEnabled( !m_encryptedFolder ) ;
@@ -391,24 +385,28 @@ void keyDialog::pbOpen()
 
 		if( wallet == tr( KWALLET ) ){
 
-			w = utility::getKeyFromWallet( LxQt::Wallet::kwalletBackEnd,m_path ) ;
+			auto s = m_secrets.walletBk( LXQt::Wallet::BackEnd::kwallet ) ;
+
+			w = utility::getKey( s.bk(),m_path ) ;
 
 		}else if( wallet == tr( INTERNAL_WALLET ) ){
 
-			w = utility::getKeyFromWallet( LxQt::Wallet::internalBackEnd,m_path,_internalPassWord ) ;
+			auto s = m_secrets.walletBk( LXQt::Wallet::BackEnd::internal ) ;
+
+			w = utility::getKey( s.bk(),m_path,"zuluMount" ) ;
 
 			if( w.notConfigured ){
 
 				DialogMsg msg( this ) ;
 				msg.ShowUIOK( tr( "ERROR!" ),tr( "Internal wallet is not configured" ) ) ;
 				return this->enableAll() ;
-			}else{
-				_internalPassWord = w.password ;
 			}
 
 		}else if( wallet == tr( GNOME_WALLET ) ){
 
-			w = utility::getKeyFromWallet( LxQt::Wallet::secretServiceBackEnd,m_path ) ;
+			auto s = m_secrets.walletBk( LXQt::Wallet::BackEnd::libsecret ) ;
+
+			w = utility::getKey( s.bk(),m_path ) ;
 		}else{
 			return this->openVolume() ;
 		}
@@ -432,7 +430,6 @@ void keyDialog::pbOpen()
 				this->openVolume() ;
 			}
 		}else{
-			_internalPassWord.clear() ;
 			this->enableAll() ;
 		}
 	}else{
@@ -442,53 +439,89 @@ void keyDialog::pbOpen()
 
 void keyDialog::encryptedFolderMount()
 {
+	DialogMsg msg( this ) ;
+
+	if( m_key.isEmpty() ){
+
+		msg.ShowUIOK( tr( "ERROR" ),tr( "Atleast one required field is empty" ) ) ;
+
+		return this->enableAll() ;
+	}
+
 	auto m = utility::mountPath( utility::mountPathPostFix( m_ui->lineEditMountPoint->text() ) ) ;
 
 	auto ro = m_ui->checkBoxOpenReadOnly->isChecked() ;
 
-	DialogMsg msg( this ) ;
+	auto& e = siritask::encryptedFolderMount( { m_path,m,m_key,QString(),QString(),
+						    QString(),ro,m_success } ) ;
 
-	switch( zuluMountTask::encryptedFolderMount( m_path,m,m_key,ro ).await().state ){
+	switch( e.await() ){
 
-	using ev = zuluMountTask::encryptedVolume ;
-
-	case ev::status::success :
-
-		m_success( m ) ;
+	case siritask::status::success :
 
 		return this->HideUI() ;
 
-	case ev::status::cryfs :
+	case siritask::status::cryfs :
 
 		msg.ShowUIOK( tr( "ERROR" ),tr( "Failed to unlock a cryfs volume.\nWrong password entered" ) ) ;
 		break;
 
-	case ev::status::encfs :
+	case siritask::status::encfs :
 
 		msg.ShowUIOK( tr( "ERROR" ),tr( "Failed to unlock an encfs volume.\nWrong password entered" ) ) ;
 		break;
 
-	case ev::status::cryfsNotFound :
+	case siritask::status::gocryptfs :
+
+		msg.ShowUIOK( tr( "ERROR" ),tr( "Failed to unlock a gocryptfs volume.\nWrong password entered" ) ) ;
+		break;
+
+	case siritask::status::ecryptfs :
+
+		msg.ShowUIOK( tr( "ERROR" ),tr( "Failed to unlock an ecryptfs volume.\nWrong password entered" ) ) ;
+		break;
+
+	case siritask::status::securefs :
+
+		msg.ShowUIOK( tr( "ERROR" ),tr( "Failed to unlock a securefs volume.\nWrong password entered" ) ) ;
+		break;
+
+	case siritask::status::cryfsNotFound :
 
 		msg.ShowUIOK( tr( "ERROR" ),tr( "Failed to unlock a cryfs volume.\ncryfs executable could not be found" ) ) ;
 		break;
 
-	case ev::status::encfsNotFound :
+	case siritask::status::securefsNotFound :
+
+		msg.ShowUIOK( tr( "ERROR" ),tr( "Failed to unlock a securefs volume.\nsecurefs executable could not be found" ) ) ;
+		break;
+
+	case siritask::status::gocryptfsNotFound :
+
+		msg.ShowUIOK( tr( "ERROR" ),tr( "Failed to unlock a gocryptfs volume.\ngocryptfs executable could not be found" ) ) ;
+		break;
+
+	case siritask::status::encfsNotFound :
 
 		msg.ShowUIOK( tr( "ERROR" ),tr( "Failed to unlock an encfs volume.\nencfs executable could not be found" ) ) ;
 		break;
 
-	case ev::status::failedToCreateMountPoint :
+	case siritask::status::ecryptfs_simpleNotFound :
+
+		msg.ShowUIOK( tr( "ERROR" ),tr( "Failed to unlock an ecryptfs volume.\necryptfs-simple executable could not be found" ) ) ;
+		break;
+
+	case siritask::status::failedToCreateMountPoint :
 
 		msg.ShowUIOK( tr( "ERROR" ),tr( "Failed to create mount point" ) ) ;
 		break;
 
-	case ev::status::unknown :
+	case siritask::status::unknown :
 
 		msg.ShowUIOK( tr( "ERROR" ),tr( "Failed to unlock the volume.\nNot supported volume encountered" ) ) ;
 		break;
 
-	case ev::status::backendFail :
+	case siritask::status::backendFail :
 
 		msg.ShowUIOK( tr( "ERROR" ),tr( "Failed to unlock the volume.\nBackend not responding" ) ) ;
 		break;
@@ -549,7 +582,7 @@ void keyDialog::openVolume()
 
 	if( m_encryptedFolder ){
 
-		if( keyType == keyDialog::Key || keyType == keyDialog::keyKeyFile ){
+		if( keyType == keyDialog::Key ){
 
 			m_key = m_ui->lineEditKey->text().toLatin1() ;
 
@@ -560,6 +593,13 @@ void keyDialog::openVolume()
 			f.open( QIODevice::ReadOnly ) ;
 
 			m_key = f.readAll() ;
+
+		}else if( keyType == keyDialog::keyKeyFile ){
+
+			if( utility::pluginKey( m_secrets.parent(),&m_key,"hmac" ) ){
+
+				return this->enableAll() ;
+			}
 
 		}else if( keyType == keyDialog::plugin ){
 
@@ -573,11 +613,7 @@ void keyDialog::openVolume()
 
 	if( m_ui->lineEditKey->text().isEmpty() ){
 
-		if( keyType == keyDialog::Key || keyType == keyDialog::keyKeyFile ){
-
-			;
-
-		}else if( keyType == keyDialog::plugin ){
+		 if( keyType == keyDialog::plugin ){
 
 			DialogMsg msg( this ) ;
 			msg.ShowUIOK( tr( "ERROR" ),tr( "Plug in name field is empty" ) ) ;
@@ -610,12 +646,24 @@ void keyDialog::openVolume()
 	}
 
 	QString m ;
-	if( keyType == keyDialog::Key || keyType == keyDialog::keyKeyFile ){
+	if( keyType == keyDialog::Key ){
 
 		auto addr = utility::keyPath() ;
 		m = QString( "-f %1" ).arg( addr ) ;
 
 		utility::keySend( addr,m_ui->lineEditKey->text() ) ;
+
+	}else if( keyType == keyDialog::keyKeyFile ){
+
+		if( utility::pluginKey( m_secrets.parent(),&m_key,"hmac" ) ){
+
+			return this->enableAll() ;
+		}
+
+		auto addr = utility::keyPath() ;
+		m = QString( "-f %1" ).arg( addr ) ;
+
+		utility::keySend( addr,m_key ) ;
 
 	}else if( keyType == keyDialog::keyfile ){
 
@@ -628,7 +676,7 @@ void keyDialog::openVolume()
 
 		if( r == "hmac" || r == "gpg" || r == "keykeyfile" ){
 
-			if( utility::pluginKey( this,&m_key,r ) ){
+			if( utility::pluginKey( m_secrets.parent(),&m_key,r ) ){
 
 				return this->enableAll() ;
 			}
@@ -643,7 +691,36 @@ void keyDialog::openVolume()
 
 			utility::keySend( addr,m_key ) ;
 		}
+
 	}else if( keyType == keyDialog::tcryptKeys ){
+
+		QEventLoop wait ;
+
+		bool cancelled = false ;
+
+		tcrypt::instance( this,false,[ this,&wait ]( const QString& key,
+				  const QStringList& keyFiles ){
+
+			m_key = key.toLatin1() ;
+			m_keyFiles = keyFiles ;
+
+			wait.exit() ;
+
+		},[ this,&wait,&cancelled ](){
+
+			cancelled = true ;
+			m_key.clear() ;
+			m_keyFiles.clear() ;
+
+			wait.exit() ;
+		} ) ;
+
+		wait.exec() ;
+
+		if( cancelled ){
+
+			return this->enableAll() ;
+		}
 
 		auto addr = utility::keyPath() ;
 		m = QString( "-f %1 " ).arg( addr ) ;
@@ -722,23 +799,8 @@ void keyDialog::openVolume()
 
 	if( s.success() ){
 
-		if( utility::mapperPathExists( m_path ) ) {
+		m_success( utility::mountPath( mountPoint ) ) ;
 
-			/*
-			 * The volume is reported as opened and it actually is
-			 */
-
-			m_success( utility::mountPath( mountPoint ) ) ;
-		}else{
-			/*
-			 * The volume is reported as opened but it isnt,possible reason is a backe end crash
-			 */
-
-			DialogMsg msg( this ) ;
-
-			msg.ShowUIOK( tr( "ERROR" ),tr( "An error has occured and the volume could not be opened" ) ) ;
-			m_cancel() ;
-		}
 		this->HideUI() ;
 	}else{
 		m_veraCryptWarning.hide() ;
@@ -799,17 +861,12 @@ void keyDialog::cbActicated( int e )
 
 void keyDialog::keyAndKeyFile()
 {
-	QByteArray key ;
-
-	if( utility::pluginKey( this,&key,"hmac" ) ){
-
-		m_ui->cbKeyType->setCurrentIndex( 0 ) ;
-	}else{
-		this->key() ;
-
-		m_ui->lineEditKey->setEnabled( false ) ;
-		m_ui->lineEditKey->setText( key ) ;
-	}
+	m_ui->pbkeyOption->setIcon( QIcon( ":/module.png" ) ) ;
+	m_ui->lineEditKey->setEchoMode( QLineEdit::Normal ) ;
+	m_ui->label->setText( tr( "Plugin name" ) ) ;
+	m_ui->pbkeyOption->setEnabled( false ) ;
+	m_ui->lineEditKey->setEnabled( false ) ;
+	m_ui->lineEditKey->setText( tr( "Key+KeyFile" ) ) ;
 }
 
 void keyDialog::plugIn()
@@ -840,6 +897,16 @@ void keyDialog::keyFile()
 	m_ui->pbkeyOption->setEnabled( true ) ;
 	m_ui->lineEditKey->clear() ;
 	m_ui->lineEditKey->setEnabled( true ) ;
+}
+
+void keyDialog::tcryptGui()
+{
+	m_ui->pbkeyOption->setIcon( QIcon( ":/module.png" ) ) ;
+	m_ui->lineEditKey->setEchoMode( QLineEdit::Normal ) ;
+	m_ui->label->setText( tr( "Plugin name" ) ) ;
+	m_ui->pbkeyOption->setEnabled( false ) ;
+	m_ui->lineEditKey->setEnabled( false ) ;
+	m_ui->lineEditKey->setText( tr( "TrueCrypt/VeraCrypt Keys" ) ) ;
 }
 
 void keyDialog::pbCancel()

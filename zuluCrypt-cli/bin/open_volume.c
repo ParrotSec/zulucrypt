@@ -400,6 +400,12 @@ int zuluCryptEXEOpenVolume( const struct_opts * opts,const char * mapping_name,u
 	}
 
 	if( plugin_path != NULL ){
+
+		/*
+		 * zuluCryptPrepareSocketPath() is defined in path_access.c
+		 */
+		zuluCryptPrepareSocketPath( uid ) ;
+
 		/*
 		 * zuluCryptUUIDFromPath() is defined in path_access.c
 		 */
@@ -470,6 +476,12 @@ int zuluCryptEXEOpenVolume( const struct_opts * opts,const char * mapping_name,u
 				case 4 : return zuluExit_1( 18,opts,device,mount_point,stl ) ;
 				case 5 : return zuluExit_1( 19,opts,device,mount_point,stl ) ;
 			}
+
+			if( *data == StringVoid ){
+
+				return zuluExit_1( 12,opts,device,mount_point,stl ) ;
+			}
+
 			key = StringContent( *data ) ;
 			key_len = StringLength( *data ) ;
 

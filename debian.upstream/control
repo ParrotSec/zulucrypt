@@ -1,0 +1,58 @@
+Source: zulucrypt
+Section: admin
+Priority: extra
+Maintainer: Mhogo Mchungu <mhogomchungu@gmail.com>
+Uploaders:
+Build-Depends: chrpath, debhelper (>= 9), cmake, pkg-config, libcryptsetup-dev, libblkid-dev, libdevmapper-dev, uuid-dev, libgcrypt11-dev, libudev-dev, bzip2, libkf5wallet-dev, qtbase5-dev, qttools5-dev, libsecret-1-dev, libpwquality-dev
+Standards-Version: 3.9.8
+Homepage: http://mhogomchungu.github.io/zuluCrypt/
+Vcs-Git: git://git@github.com:mhogomchungu/zuluCrypt.git
+Vcs-Browser: https://github.com/mhogomchungu/zuluCrypt
+
+Package: zulucrypt
+Architecture: all
+Depends: zulucrypt-gui, zulucrypt-cli
+Description: front-end for cryptsetup and tcplay
+ ZuluCrypt makes it easier to use cryptsetup by providing a Qt based
+ GUI and a simpler to use cli front end to cryptsetup.
+ .
+ This metapackage installs the gui and the cli components.
+
+Package: zulucrypt-gui
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, zulucrypt-cli (= ${binary:Version})
+Description: graphical front-end for cryptsetup and tcplay
+ ZuluCrypt makes it easier to use cryptsetup by providing a Qt based
+ GUI and a simpler to use cli front end to cryptsetup.
+ .
+ This package contains the graphical applications.
+
+Package: zulucrypt-cli
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, libzulucrypt1 (= ${binary:Version})
+Description: console front-end for cryptsetup and tcplay
+ ZuluCrypt makes it easier to use cryptsetup by providing a Qt based
+ GUI and a simpler to use cli front end to cryptsetup.
+ .
+ This package contains the console applications.
+
+Package: libzulucrypt1
+Architecture: any
+Multi-Arch: same
+Pre-Depends: ${misc:Pre-Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: shared libraries for cryptsetup and tcplay
+ ZuluCrypt makes it easier to use cryptsetup by providing a Qt based
+ GUI and a simpler to use cli front end to cryptsetup.
+ .
+ This package contains the shared libraries.
+
+Package: libzulucrypt-dev
+Pre-Depends: ${misc:Pre-Depends}
+Depends: ${misc:Depends}
+Architecture: any
+Section: libdevel
+Description: development files for zulucrypt
+ This package contains development files and libraries necessary to
+ build programs around zulucrypt
+

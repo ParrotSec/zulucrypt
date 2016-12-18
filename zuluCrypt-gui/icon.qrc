@@ -1,4 +1,4 @@
- 
+
  <!DOCTYPE RCC>
  <RCC version="1.0">
 	 <qresource>
@@ -8,6 +8,6 @@
 		 <file>partition.png</file>
 		 <file>file.png</file>
 		 <file>passphrase.png</file>
-		 <file>module.png</file>		 
+		 <file>module.png</file>
 	 </qresource>
  </RCC>

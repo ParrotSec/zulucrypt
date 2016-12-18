@@ -120,7 +120,7 @@ QStringList zuluMountTask::mountedVolumeList( void )
 	return utility::Task( utility::appendUserUID( "%1 -E" ).arg( zuluMountPath ) ).splitOutput( '\n' ) ;
 }
 
-volumeEntryProperties _getVolumeProperties( const QString& e )
+volumeProperty _getVolumeProperties( const QString& e )
 {
 	auto device = _device( e ) ;
 
@@ -128,15 +128,15 @@ volumeEntryProperties _getVolumeProperties( const QString& e )
 
 	if( r.success() ) {
 
-		return volumeEntryProperties( r.splitOutput( '\t' ),_volumeIsSystemVolume( device ) ) ;
+		return volumeProperty( r.splitOutput( '\t' ),_volumeIsSystemVolume( device ) ) ;
 	}else{
-		return volumeEntryProperties() ;
+		return volumeProperty() ;
 	}
 }
 
-Task::future< volumeEntryProperties >& zuluMountTask::getVolumeProperties( const QString& e )
+Task::future< volumeProperty >& zuluMountTask::getVolumeProperties( const QString& e )
 {
-	return Task::run< volumeEntryProperties >( [ e ](){ return _getVolumeProperties( e ) ; } ) ;
+	return Task::run< volumeProperty >( [ e ](){ return _getVolumeProperties( e ) ; } ) ;
 }
 
 Task::future< QString >& zuluMountTask::volumeProperties( const QString& v,const QString& volumeType )
@@ -338,6 +338,9 @@ void zuluMountTask::addVolumeToHiddenVolumeList( const QString& e )
 
 			f.write( a.toLatin1() + "\n" ) ;
 		}
+
+		utility::changePathOwner( f ) ;
+		utility::changePathPermissions( f ) ;
 	}
 }
 
@@ -403,6 +406,9 @@ void zuluMountTask::removeVolumeFromHiddenVolumeList( const QString& e )
 
 					f.write( it.toLatin1() + "\n" ) ;
 				}
+
+				utility::changePathOwner( f ) ;
+				utility::changePathPermissions( f ) ;
 			}
 		}
 	} ;
@@ -410,9 +416,9 @@ void zuluMountTask::removeVolumeFromHiddenVolumeList( const QString& e )
 	_update_list( _remove_entry( _get_hidden_volume_list(),e ) ) ;
 }
 
-Task::future< QVector< volumeEntryProperties > >& zuluMountTask::updateVolumeList()
+Task::future< QVector< volumeProperty > >& zuluMountTask::updateVolumeList()
 {
-	return Task::run< QVector< volumeEntryProperties > >( [](){
+	return Task::run< QVector< volumeProperty > >( [](){
 
 		auto l = zuluMountTask::hiddenVolumeList() ;
 
@@ -439,7 +445,7 @@ Task::future< QVector< volumeEntryProperties > >& zuluMountTask::updateVolumeLis
 			return true ;
 		} ;
 
-		QVector< volumeEntryProperties > list ;
+		QVector< volumeProperty > list ;
 
 		auto all = utility::Task( utility::appendUserUID( "%1 -l" ).arg( zuluMountPath ),10000 ) ;
 
@@ -457,7 +463,7 @@ Task::future< QVector< volumeEntryProperties > >& zuluMountTask::updateVolumeLis
 					if( _validEntry( it ) ){
 
 						const auto& e = utility::split( it,'\t' ) ;
-						list.append( volumeEntryProperties( e,s.contains( e.first() ) ) ) ;
+						list.append( volumeProperty( e,s.contains( e.first() ) ) ) ;
 					}
 				}
 			}
@@ -534,7 +540,7 @@ volumeStatus zuluMountTask::volumeMiniProperties( const QString& volume )
 
 	if( r.success() ){
 
-		s.entry = new volumeEntryProperties( r.splitOutput( '\t' ),_volumeIsSystemVolume( volume ) ) ;
+		s.entry = new volumeProperty( r.splitOutput( '\t' ),_volumeIsSystemVolume( volume ) ) ;
 	}
 
 	return s ;
@@ -550,7 +556,7 @@ volumeStatus zuluMountTask::deviceProperties( const zuluMountTask::event& device
 
 		if( deviceProperty.added ){
 
-			s.entry = new volumeEntryProperties( _getVolumeProperties( d ) ) ;
+			s.entry = new volumeProperty( _getVolumeProperties( d ) ) ;
 		}else{
 			s.volumeRemoved = true ;
 		}
@@ -566,7 +572,7 @@ volumeStatus zuluMountTask::deviceProperties( const zuluMountTask::event& device
 
 		if( deviceProperty.added ){
 
-			s.entry = new volumeEntryProperties( _getVolumeProperties( d ) ) ;
+			s.entry = new volumeProperty( _getVolumeProperties( d ) ) ;
 		}else{
 			s.volumeRemoved = true ;
 		}
@@ -591,7 +597,7 @@ volumeStatus zuluMountTask::deviceProperties( const zuluMountTask::event& device
 
 			if( deviceProperty.added ){
 
-				s.entry = new volumeEntryProperties( _getVolumeProperties( device ) ) ;
+				s.entry = new volumeProperty( _getVolumeProperties( device ) ) ;
 			}else{
 				s.volumeRemoved = true ;
 			}
@@ -614,161 +620,4 @@ volumeStatus zuluMountTask::deviceProperties( const zuluMountTask::event& device
 		case zuluMountTask::devices::dm_device : return _dmDevice( device )     ;
 		default                                : return _shouldNotGetHere() ;
 	}
-}
-
-static bool _delete_mount_point( const QString& m )
-{
-	auto mm = m ;
-	mm.replace( "\"","\"\"\"" ) ;
-
-	return utility::Task( utility::appendUserUID( "%1 -b \"%2\"" ).arg( zuluMountPath,mm ) ).success() ;
-}
-
-static bool _create_mount_point( const QString& m )
-{
-	auto mm = m ;
-	mm.replace( "\"","\"\"\"" ) ;
-
-	return utility::Task( utility::appendUserUID( "%1 -B \"%2\"" ).arg( zuluMountPath,mm ) ).success() ;
-}
-
-Task::future<bool>& zuluMountTask::encryptedFolderUnMount( const QString& m )
-{
-	return Task::run< bool >( [ m ](){
-
-		auto _umount = [ & ](){
-
-			auto mm = m ;
-			mm.replace( "\"","\"\"\"" ) ;
-
-			if( utility::Task( "fusermount -u \"" + mm + "\"",10000 ).success() ){
-
-				return _delete_mount_point( m ) ;
-			}else{
-				return false ;
-			}
-		} ;
-
-		for( int i = 0 ; i < 5 ; i++ ){
-
-			if( _umount() ){
-
-				return true ;
-			}else{
-				utility::Task::waitForOneSecond() ;
-			}
-		}
-
-		return false ;
-	} ) ;
-}
-
-using ev = zuluMountTask::encryptedVolume ;
-
-Task::future< ev >& zuluMountTask::encryptedFolderMount( const QString& p,const QString& m,const QString& k,bool ro )
-{
-	return Task::run< ev >( [ p,m,k,ro ]()->ev{
-
-		auto _cmd = [ & ]( const QString& e,ev::status status,const QString& arguments )->ev{
-
-			for( const auto& it : { "/usr/local/bin/","/usr/local/sbin/","/usr/bin/","/usr/sbin/" } ){
-
-				auto exe = it + e ;
-
-				if( utility::pathExists( exe ) ){
-
-					QProcess e ;
-
-					e.start( exe + " " + arguments ) ;
-
-					e.waitForStarted() ;
-
-					e.write( k.toLatin1() + '\n' ) ;
-
-					e.closeWriteChannel() ;
-
-					if( e.waitForFinished( 10000 ) ){
-
-						if( e.exitCode() == 0 ){
-
-							return { ev::status::success } ;
-						}else{
-							return { status } ;
-						}
-					}else{
-						return { ev::status::backendFail } ;
-					}
-				}
-			}
-
-			if( status == ev::status::cryfs ){
-
-				return { ev::status::cryfsNotFound } ;
-			}else{
-				return { ev::status::encfsNotFound } ;
-			}
-		} ;
-
-		auto _mount = [ & ]( std::function< ev() > unlocked )->ev{
-
-			if( _create_mount_point( m ) ){
-
-				auto e = unlocked() ;
-
-				if( e.state != ev::status::success ) {
-
-					_delete_mount_point( m ) ;
-				}
-
-				return e ;
-			}else{
-				return { ev::status::failedToCreateMountPoint } ;
-			}
-		} ;
-
-		auto pp = p ;
-		pp.replace( "\"","\"\"\"" ) ;
-
-		auto mm = m ;
-		mm.replace( "\"","\"\"\"" ) ;
-
-		if( utility::pathExists( p + "/cryfs.config" ) ){
-
-			return _mount( [ & ](){
-
-				setenv( "CRYFS_NO_UPDATE_CHECK","TRUE",1 ) ;
-				setenv( "CRYFS_FRONTEND","noninteractive",1 ) ;
-
-				const char * opts ;
-
-				if( ro ){
-
-					opts = "\"%1\" \"%2\" -- -o ro -o fsname=cryfs@\"%3\" -o subtype=cryfs" ;
-				}else{
-					opts = "\"%1\" \"%2\" -- -o rw -o fsname=cryfs@\"%3\" -o subtype=cryfs" ;
-				}
-
-				return _cmd( "cryfs",ev::status::cryfs,QString( opts ).arg( pp,mm,pp ) ) ;
-			} ) ;
-		}
-
-		if( utility::pathExists( p + "/.encfs6.xml" ) ){
-
-			return _mount( [ & ](){
-
-				const char * opts ;
-
-				if( ro ){
-
-					opts = "\"%1\" \"%2\" -S -o ro -o fsname=encfs@\"%3\" -o subtype=encfs" ;
-				}else{
-					opts = "\"%1\" \"%2\" -S -o rw -o fsname=encfs@\"%3\" -o subtype=encfs" ;
-				}
-
-				return _cmd( "encfs",ev::status::encfs,QString( opts ).arg( pp,mm,pp ) ) ;
-			} ) ;
-		}
-
-		return { ev::status::unknown } ;
-	} ) ;
 }

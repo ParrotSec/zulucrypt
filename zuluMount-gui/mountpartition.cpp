@@ -72,11 +72,16 @@ mountPartition::mountPartition( QWidget * parent,QTableWidget * table,std::funct
 
 	m_ui->pbMountFolder->setVisible( false ) ;
 
-	auto ac = new QAction( this ) ;
-	QKeySequence s( Qt::CTRL + Qt::Key_F ) ;
-	ac->setShortcut( s ) ;
-	connect( ac,SIGNAL( triggered() ),this,SLOT( showOffSetWindowOption() ) ) ;
-	this->addAction( ac ) ;
+	this->addAction( [ this ](){
+
+		auto ac = new QAction( this ) ;
+
+		ac->setShortcut( Qt::CTRL + Qt::Key_F ) ;
+
+		connect( ac,SIGNAL( triggered() ),this,SLOT( showOffSetWindowOption() ) ) ;
+
+		return ac ;
+	}() ) ;
 
 	m_menu = new QMenu( this ) ;
 
@@ -287,12 +292,23 @@ void mountPartition::pbOpenMountPath()
 	auto Z = QFileDialog::getExistingDirectory( this,p,utility::homePath(),QFileDialog::ShowDirsOnly ) ;
 
 	if( !Z.isEmpty() ){
+
+		while( true ){
+
+			if( Z.endsWith( '/' ) ){
+
+				Z.truncate( Z.length() - 1 ) ;
+			}else{
+				break ;
+			}
+		}
+
 		Z = Z + "/" + m_ui->lineEdit->text().split( "/" ).last() ;
 		m_ui->lineEdit->setText( Z ) ;
 	}
 }
 
-void mountPartition::ShowUI( const volumeEntryProperties& e )
+void mountPartition::ShowUI( const volumeProperty& e )
 {
 	m_path  = e.volumeName() ;
 	m_label = e.label() ;
@@ -316,7 +332,7 @@ void mountPartition::ShowUI( const volumeEntryProperties& e )
 	this->show() ;
 }
 
-void mountPartition::AutoMount( const volumeEntryProperties& e )
+void mountPartition::AutoMount( const volumeProperty& e )
 {
 	m_path = e.volumeName() ;
 

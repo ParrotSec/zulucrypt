@@ -1,4 +1,10 @@
-zulucrypt (5.0.0+parrot1) testing; urgency=medium
+zulucrypt (5.0.2-0parrot0) testing; urgency=medium
+
+  * Import new upstream release
+
+ -- Lorenzo "Palinuro" Faletra <palinuro@parrotsec.org>  Sun, 18 Dec 2016 15:38:19 +0100
+
+zulucrypt (5.0.0-0parrot1) testing; urgency=medium
 
   * Convert from native to quilt
 

@@ -1,4 +1,4 @@
-/*
+﻿/*
  *
  *  Copyright ( c ) 2011-2015
  *  name : Francis Banyikwa
@@ -40,7 +40,6 @@
 #include <QByteArray>
 #include <QProcess>
 #include <QFile>
-#include <QFile>
 #include <QDir>
 #include <QTableWidget>
 #include <QMessageBox>
@@ -57,7 +56,6 @@
 #include "version.h"
 #include "locale_path.h"
 #include "mount_prefix_path.h"
-#include "storage_manager.h"
 #include "dialogmsg.h"
 #include "support_whirlpool.h"
 #include "readonlywarning.h"
@@ -71,8 +69,6 @@
 #include <unistd.h>
 
 #include <gcrypt.h>
-
-#include "lxqt_wallet/frontend/lxqt_wallet.h"
 
 #include "../zuluCrypt-cli/pluginManager/libzuluCryptPluginManager.h"
 
@@ -90,6 +86,11 @@ static int staticGlobalUserId = -1 ;
 bool utility::reUseMountPointPath()
 {
 	return REUSE_MOUNT_POINT ;
+}
+
+bool utility::reUseMountPoint()
+{
+	return utility::reUseMountPointPath() ;
 }
 
 void utility::setUID( int uid )
@@ -223,11 +224,11 @@ void utility::createPlugInMenu( QMenu * menu,const QString& a,const QString& b,c
 
 	if( utility::notRunningInMixedMode() ){
 
-		if( LxQt::Wallet::backEndIsSupported( LxQt::Wallet::secretServiceBackEnd ) ){
+		if( LXQt::Wallet::backEndIsSupported( LXQt::Wallet::BackEnd::libsecret ) ){
 
 			l.append( b ) ;
 		}
-		if( LxQt::Wallet::backEndIsSupported( LxQt::Wallet::kwalletBackEnd ) ){
+		if( LXQt::Wallet::backEndIsSupported( LXQt::Wallet::BackEnd::kwallet ) ){
 
 			l.append( c ) ;
 		}
@@ -297,35 +298,6 @@ void utility::createPlugInMenu( QMenu * menu,const QString& a,const QString& b,c
 	} ) ;
 }
 
-::Task::future<QString>& utility::getKeyFromWallet( LxQt::Wallet::Wallet * wallet,const QString& volumeID )
-{
-	return ::Task::run<QString>( [ wallet,volumeID ](){
-
-		decltype( wallet->readValue( volumeID ) ) key ;
-
-		if( volumeID.startsWith( "UUID=" ) ){
-
-			key = wallet->readValue( volumeID ) ;
-		}else{
-			auto uuid = utility::getUUIDFromPath( volumeID ).get() ;
-
-			if( uuid.isEmpty() ){
-
-				key = wallet->readValue( utility::getVolumeID( volumeID ) ) ;
-			}else{
-				key = wallet->readValue( uuid ) ;
-
-				if( key.isEmpty() ){
-
-					key = wallet->readValue( volumeID ) ;
-				}
-			}
-		}
-
-		return key ;
-	} ) ;
-}
-
 ::Task::future<QString>& utility::getUUIDFromPath( const QString& dev )
 {
 	return ::Task::run<QString>( [ dev ](){
@@ -353,68 +325,19 @@ void utility::createPlugInMenu( QMenu * menu,const QString& a,const QString& b,c
 	} ) ;
 }
 
-utility::Array::Array( const QString& s,char splitter )
-{
-	if( !s.isEmpty() ){
-
-		m_list = s.toLatin1().split( splitter ) ;
-	}
-
-	this->setUp() ;
-}
-
-utility::Array::Array( const QStringList& s )
-{
-	for( const auto& it : s ){
-
-		m_list.append( it.toLatin1() ) ;
-	}
-
-	this->setUp() ;
-}
-
-size_t utility::Array::size()
-{
-	return m_list.size() ;
-}
-
-void utility::Array::setUp()
-{
-	auto p = m_list.size() ;
-
-	m_vector.resize( p + 1 ) ;
-
-	auto q = m_vector.data() ;
-
-	for( decltype( p ) i = 0 ; i < p ; i++ ){
-
-		*( q + i ) = m_list.at( i ).constData() ;
-	}
-
-	*( q + p ) = nullptr ;
-}
-
-char * const * utility::Array::value()
-{
-	return const_cast< char * const * >( m_vector.data() ) ;
-}
-
 static bool _execute_process( const QString& m,const QString& exe,const QString& env,int uid )
 {
+	Q_UNUSED( env ) ;
+
 	if( exe.startsWith( "/" ) && utility::pathExists( exe ) ){
 
-		auto e = m ;
+		return utility::Task( exe + " " + utility::Task::makePath( m ),[ & ](){
 
-		e.replace( "\"","\"\"\"" ) ;
+			return QProcessEnvironment() ;
 
-		return utility::Task( exe + " \"" + e + "\"",-1,env.split( "\n" ),[ uid ](){
+		}(),[ uid ](){
 
 			if( uid != -1 ){
-
-				Q_UNUSED( setgid( uid ) ) ;
-				Q_UNUSED( setgroups( 1,reinterpret_cast< const gid_t * >( &uid ) ) ) ;
-				Q_UNUSED( setegid( uid ) ) ;
-				Q_UNUSED( setuid( uid ) ) ;
 
 				auto id = getpwuid( uid ) ;
 
@@ -424,7 +347,28 @@ static bool _execute_process( const QString& m,const QString& exe,const QString&
 					setenv( "HOME",id->pw_dir,1 ) ;
 					setenv( "USER",id->pw_name,1 ) ;
 				}
+
+				Q_UNUSED( setgid( uid ) ) ;
+				Q_UNUSED( setgroups( 1,reinterpret_cast< const gid_t * >( &uid ) ) ) ;
+				Q_UNUSED( setegid( uid ) ) ;
+				Q_UNUSED( setuid( uid ) ) ;
+
 			}
+
+			auto path = [](){
+
+				auto e = getenv( "PATH" ) ;
+
+				QString s = "/usr/local/bin:/usr/bin:/bin:" ;
+
+				if( e ){
+					return e + QString( ":" ) + s ;
+				}else{
+					return s ;
+				}
+			}() ;
+
+			setenv( "PATH",path.toLatin1().constData(),1 ) ;
 
 		} ).success() ;
 	}else{
@@ -440,7 +384,8 @@ static bool _execute_process( const QString& m,const QString& exe,const QString&
 	} ) ;
 }
 
-void utility::openPath( const QString& path,const QString& opener,const QString& env,QWidget * obj,const QString& title,const QString& msg )
+void utility::openPath( const QString& path,const QString& opener,
+			const QString& env,QWidget * obj,const QString& title,const QString& msg )
 {
 	openPath( path,opener,env ).then( [ title,msg,obj ]( bool failed ){
 
@@ -452,74 +397,82 @@ void utility::openPath( const QString& path,const QString& opener,const QString&
 	} ) ;
 }
 
-utility::wallet utility::getKeyFromWallet( LxQt::Wallet::walletBackEnd storage,const QString& keyID,const QString& pwd )
+static ::Task::future<QString>& _getKey( LXQt::Wallet::Wallet& wallet,const QString& volumeID )
 {
-	utility::wallet w{ false,false,"","" } ;
+	return ::Task::run<QString>( [ & ](){
 
-	auto _getBackEnd = []( LxQt::Wallet::walletBackEnd e ){
+		decltype( wallet.readValue( volumeID ) ) key ;
 
-		return LxQt::Wallet::getWalletBackend( e ) ;
-	} ;
+		if( volumeID.startsWith( "UUID=" ) ){
 
-	using storage_t = std::unique_ptr< LxQt::Wallet::Wallet > ;
+			key = wallet.readValue( volumeID ) ;
+		}else{
+			auto uuid = utility::getUUIDFromPath( volumeID ).get() ;
 
-	if( storage == LxQt::Wallet::kwalletBackEnd ){
+			if( uuid.isEmpty() ){
 
-		storage_t e( _getBackEnd( storage ) ) ;
+				key = wallet.readValue( utility::getVolumeID( volumeID ) ) ;
+			}else{
+				key = wallet.readValue( uuid ) ;
 
-		w.opened = e->await_open( "default",utility::applicationName() ) ;
+				if( key.isEmpty() ){
+
+					key = wallet.readValue( volumeID ) ;
+				}
+			}
+		}
+
+		return key ;
+	} ) ;
+}
+
+utility::wallet utility::getKey( LXQt::Wallet::Wallet& wallet,const QString& keyID,const QString& app )
+{
+	utility::wallet w{ false,false,"" } ;
+
+	auto s = wallet.backEnd() ;
+
+	if( s == LXQt::Wallet::BackEnd::kwallet || s == LXQt::Wallet::BackEnd::libsecret ){
+
+		if( s == LXQt::Wallet::BackEnd::kwallet ){
+
+			w.opened = wallet.open( "default",utility::applicationName() ) ;
+		}else{
+			w.opened = wallet.open( utility::walletName(),utility::applicationName() ) ;
+		}
 
 		if( w.opened ){
 
-			w.key = utility::getKeyFromWallet( e.get(),keyID ).await() ;
+			w.key = _getKey( wallet,keyID ).await() ;
 		}
 
-		return w ;
-
-	}else if( storage == LxQt::Wallet::internalBackEnd ){
+	}else if( s == LXQt::Wallet::BackEnd::internal ){
 
 		auto walletName = utility::walletName() ;
 		auto appName    = utility::applicationName() ;
 
-		if( LxQt::Wallet::walletExists( LxQt::Wallet::internalBackEnd,walletName,appName ) ){
+		if( LXQt::Wallet::walletExists( s,walletName,appName ) ){
 
-			storage_t e( _getBackEnd( storage ) ) ;
+			wallet.setImage( utility::getIcon( app ) ) ;
 
-			e->setImage( ":/zuluCrypt.png" ) ;
+			if( wallet.opened() ){
 
-			w.opened = e->await_open( walletName,appName,pwd ) ;
+				w.opened = true ;
+			}else{
+				w.opened = wallet.open( walletName,appName ) ;
+			}
 
 			if( w.opened ){
 
-				w.key = utility::getKeyFromWallet( e.get(),keyID ).await() ;
-				w.password = e->qObject()->objectName() ;
+				w.key = _getKey( wallet,keyID ).await() ;
 				w.notConfigured = false ;
 			}
-
-			return w ;
 		}else{
 			w.notConfigured = true ;
-			return w ;
 		}
-
-	}else if( storage == LxQt::Wallet::secretServiceBackEnd ){
-
-		storage_t e( _getBackEnd( storage ) ) ;
-
-		w.opened = e->await_open( utility::walletName(),utility::applicationName() ) ;
-
-		if( w.opened ){
-
-			w.key = utility::getKeyFromWallet( e.get(),keyID ).await() ;
-		}
-
-		return w ;
-	}else{
-		/*
-		 * shouldnt get here
-		 */
-		return w ;
 	}
+
+	return w ;
 }
 
 static quint64 _volumeSize( const QString& e,size_t size )
@@ -744,6 +697,9 @@ void utility::setLocalizationLanguage( const QString& program,const QString& lan
 	if( f.open( QIODevice::WriteOnly | QIODevice::Truncate ) ){
 
 		f.write( language.toLatin1() ) ;
+
+		utility::changePathOwner( f ) ;
+		utility::changePathPermissions( f ) ;
 	}
 }
 
@@ -911,11 +867,11 @@ QString utility::mapperPath( const QString& r,const QString& component )
 
 	if( rpath.startsWith( "UUID=" ) ){
 
-		rpath.remove( QChar( '\"' ) ) ;
+		rpath.remove( '\"' ) ;
 
 		rpath.replace( "UUID=","UUID-" ) ;
 
-		path += QString( "-" ) + rpath + utility::hashPath( rpath.toLatin1() ) ;
+		path += "-" + rpath + utility::hashPath( rpath.toLatin1() ) ;
 	}else{
 		if( component.isEmpty() ){
 
@@ -925,11 +881,9 @@ QString utility::mapperPath( const QString& r,const QString& component )
 		}
 	}
 
-	QString z = BASH_SPECIAL_CHARS ;
+	for( const auto& it : BASH_SPECIAL_CHARS ){
 
-	for( const auto& it : z ){
-
-		path.replace( it,QChar( '_' ) ) ;
+		path.replace( it,'_' ) ;
 	}
 	return path ;
 }
@@ -957,7 +911,7 @@ QString utility::hashPath( const QByteArray& p )
 
 	hash += ( hash << 15 ) ;
 
-	return QString( "-" ) + QString::number( hash ) ;
+	return "-" + QString::number( hash ) ;
 }
 
 bool utility::pathExists( const QString& path )
@@ -1005,51 +959,48 @@ QString utility::resolvePath( const QString& path )
 	}
 }
 
+QString utility::executableFullPath( const QString& f )
+{
+	QString e = f ;
+
+	if( e == "ecryptfs" ){
+
+		e = "ecryptfs-simple" ;
+	}
+
+	QString exe ;
+
+	auto q = { "/usr/local/bin/",
+		   "/usr/local/sbin/",
+		   "/usr/bin/",
+		   "/usr/sbin/",
+		   "/bin/",
+		   "/sbin/" } ;
+
+	for( const auto& it : q ){
+
+		exe = it + e ;
+
+		if( utility::pathExists( exe ) ){
+
+			return exe ;
+		}
+	}
+
+	return QString() ;
+}
+
+
 static QString _absolute_exe_path( const QString& exe )
 {
-	QString e = "/usr/local/bin/" + exe ;
+	auto e = utility::executableFullPath( exe ) ;
 
-	if( utility::pathExists( e ) ){
+	if( e.isEmpty() ){
 
+		return exe ;
+	}else{
 		return e ;
 	}
-
-	e = "/usr/local/sbin/" + exe ;
-
-	if( utility::pathExists( e ) ){
-
-		return e ;
-	}
-
-	e = "/usr/bin/" + exe ;
-
-	if( utility::pathExists( e ) ){
-
-		return e ;
-	}
-
-	e = "/usr/sbin/" + exe ;
-
-	if( utility::pathExists( e ) ){
-
-		return e ;
-	}
-
-	e = "/bin/" + exe ;
-
-	if( utility::pathExists( e ) ){
-
-		return e ;
-	}
-
-	e = "/sbin/" + exe ;
-
-	if( utility::pathExists( e ) ){
-
-		return e ;
-	}
-
-	return exe ;
 }
 
 QString utility::cmdArgumentValue( const QStringList& l,const QString& arg,const QString& defaulT )
@@ -1163,9 +1114,10 @@ void utility::addToFavorite( const QString& dev,const QString& m_point )
 
 		f.open( QIODevice::WriteOnly | QIODevice::Append ) ;
 
-		utility::changeFilePermissions( f ) ;
-
 		f.write( fav.toLatin1() ) ;
+
+		utility::changePathOwner( f ) ;
+		utility::changePathPermissions( f ) ;
 	}
 }
 
@@ -1186,6 +1138,9 @@ QStringList utility::readFavorites()
 				l.append( it ) ;
 			}
 		}
+
+		utility::changePathOwner( f ) ;
+		utility::changePathPermissions( f ) ;
 
 		return l ;
 	}else{
@@ -1212,7 +1167,8 @@ void utility::removeFavoriteEntry( const QString& entry )
 		f.write( q.toLatin1() ) ;
 	}
 
-	utility::changeFilePermissions( f ) ;
+	utility::changePathPermissions( f ) ;
+	utility::changePathOwner( f ) ;
 }
 
 void utility::readFavorites( QMenu * m,bool truncate,bool showFolders )
@@ -1300,7 +1256,7 @@ You should have received a copy of the GNU General Public License\n\
 along with this program.  If not, see <http://www.gnu.org/licenses/>." ).arg( VERSION_STRING ) ;
 
 	DialogMsg m( parent ) ;
-	m.ShowUIInfo( QObject::tr( "about zuluCrypt" ),license ) ;
+	m.ShowUIInfo( QObject::tr( "about zuluCrypt" ),false,license ) ;
 }
 
 static utility::array_t _default_dimensions( const char * defaults )
@@ -1329,9 +1285,12 @@ static utility::array_t _dimensions( const QString& path,const char * defaults,i
 
 		if( f.open( QIODevice::WriteOnly | QIODevice::Truncate ) ){
 
-			utility::changeFilePermissions( f ) ;
+			utility::changePathPermissions( f ) ;
 
 			f.write( defaults ) ;
+
+			utility::changePathPermissions( f ) ;
+			utility::changePathOwner( f ) ;
 
 			f.close() ;
 		}else{
@@ -1398,11 +1357,14 @@ void utility::setWindowDimensions( const QString& application,const std::initial
 
 	if( f.open( QIODevice::WriteOnly | QIODevice::Truncate ) ){
 
-		utility::changeFilePermissions( f ) ;
+		utility::changePathPermissions( f ) ;
 
 		for( const auto& it : e ){
 
 			f.write( QString( QString::number( it ) + " " ).toLatin1() ) ;
+
+			utility::changePathPermissions( f ) ;
+			utility::changePathOwner( f ) ;
 		}
 	}
 }
@@ -1463,8 +1425,8 @@ void utility::saveFont( const QFont& Font )
 
 	if( f.open( QIODevice::WriteOnly | QIODevice::Truncate ) ){
 
-		utility::changeFileOwner( f ) ;
-		utility::changeFilePermissions( f ) ;
+		utility::changePathOwner( f ) ;
+		utility::changePathPermissions( f ) ;
 
 		auto s = QString( "%1\n%2\n" ).arg( Font.family(),QString::number( Font.pointSize() ) ) ;
 
@@ -1487,6 +1449,9 @@ void utility::saveFont( const QFont& Font )
 		}
 
 		f.write( s.toLatin1() ) ;
+
+		utility::changePathPermissions( f ) ;
+		utility::changePathOwner( f ) ;
 	}
 }
 
@@ -1525,7 +1490,7 @@ bool utility::userBelongsToGroup( const char * groupname )
 	return false ;
 }
 
-int utility::pluginKey( QDialog * w,QByteArray * key,const QString& p )
+int utility::pluginKey( QWidget * w,QByteArray * key,const QString& p )
 {
 	plugins::plugin pluginType ;
 	QString pluginString ;
@@ -1593,14 +1558,6 @@ void utility::showTrayIcon( QAction * ac,QSystemTrayIcon * trayIcon,bool zuluCry
 {
 	Q_UNUSED( zuluCrypt ) ;
 
-	QString home = utility::homePath() + "/.zuluCrypt/" ;
-	QDir d( home ) ;
-
-	if( !d.exists() ){
-
-		d.mkdir( home ) ;
-	}
-
 	QFile f( utility::homePath() + "/.zuluCrypt/tray" ) ;
 
 	if( !f.exists() ){
@@ -1626,6 +1583,9 @@ void utility::showTrayIcon( QAction * ac,QSystemTrayIcon * trayIcon,bool zuluCry
 		ac->setChecked( false ) ;
 		trayIcon->hide() ;
 	}
+
+	utility::changePathPermissions( f ) ;
+	utility::changePathOwner( f ) ;
 }
 
 void utility::trayProperty( QSystemTrayIcon * trayIcon,bool zuluCrypt )
@@ -1652,63 +1612,81 @@ void utility::trayProperty( QSystemTrayIcon * trayIcon,bool zuluCrypt )
 		f.write( "1" ) ;
 		trayIcon->show() ;
 	}
+
+	utility::changePathPermissions( f ) ;
+	utility::changePathOwner( f ) ;
 }
 
-static void _set_checked( QMenu * m,const QString& e )
+class translator
 {
-	for( auto& it : m->actions() ){
+public:
+	void set( const QString& app,const QByteArray& r,int s )
+	{
+		QCoreApplication::installTranslator( [ & ](){
 
-		QString p = it->text() ;
+			auto f = m_translator.data() ;
+			auto e = *( f + s ) ;
 
-		p.remove( "&" ) ;
+			if( e ){
 
-		it->setChecked( e == p ) ;
+				QCoreApplication::removeTranslator( e ) ;
+
+				delete e ;
+			}
+
+			e = new QTranslator() ;
+
+			e->load( r.constData(),utility::localizationLanguagePath( app ) ) ;
+
+			*( f + s ) = e ;
+
+			return e ;
+		}() ) ;
 	}
+	~translator()
+	{
+		for( auto e : m_translator ){
+
+			if( e ){
+
+				/*
+				 * QApplication appear to already be gone by the time we get here.
+				 */
+				//QCoreApplication::removeTranslator( e ) ;
+
+				delete e ;
+			}
+		}
+	}
+
+private:
+	std::array< QTranslator *,2 > m_translator = { { nullptr,nullptr } } ;
+} static _translator ;
+
+static void _selectOption( QMenu * m,const QString& opt )
+{
+	utility::selectMenuOption s( m,false ) ;
+	s.selectOption( opt ) ;
 }
 
-void utility::setLocalizationLanguage( bool translate,QWidget * w,QAction * ac,const QString& app )
+void utility::setLocalizationLanguage( bool translate,QMenu * m,const QString& app )
 {
 	auto r = utility::localizationLanguage( app ).toLatin1() ;
 
-	auto e = utility::localizationLanguagePath( app ) ;
-
 	if( translate ){
 
-		if( r == "en_US" ){
+		_translator.set( app,r,0 ) ;
+
+		if( app == "zuluMount-gui" ){
+
 			/*
-			 * english_US language,its the default and hence dont load anything
+			 * We are loading zuluCrypt-gui translation file to get translations for
+			 * lxqtwallet strings.
 			 */
-		}else{
-			auto translator = new QTranslator( w ) ;
-
-			translator->load( r.constData(),e ) ;
-			QCoreApplication::installTranslator( translator ) ;
-
-			if( app == "zuluMount-gui" ){
-
-				/*
-				 * We are loading zuluCrypt-gui translation file to get translations for
-				 * lxqtwallet strings.
-				 */
-				translator = new QTranslator( w ) ;
-
-				e = utility::localizationLanguagePath( "zuluCrypt-gui" ) ;
-
-				translator->load( r.constData(),e ) ;
-				QCoreApplication::installTranslator( translator ) ;
-			}
+			_translator.set( "zuluCrypt-gui",r,1 ) ;
 		}
-
 	}else{
-		auto m = new QMenu( w ) ;
-
-		m->setFont( w->font() ) ;
-
-		w->connect( m,SIGNAL( triggered( QAction * ) ),w,SLOT( languageMenu( QAction * ) ) ) ;
-
-		QDir d( e ) ;
-
-		m->addAction( "en_US" )->setCheckable( true ) ;
+		QDir d( utility::localizationLanguagePath( app ) ) ;
 
 		auto t = d.entryList() ;
 
@@ -1723,24 +1701,23 @@ void utility::setLocalizationLanguage( bool translate,QWidget * w,QAction * ac,c
 			}
 		}
 
-		if( ac ){
-
-			ac->setMenu( m ) ;
-		}
-
-		_set_checked( m,r ) ;
+		_selectOption( m,r ) ;
 	}
 }
 
 void utility::languageMenu( QWidget * w,QMenu * m,QAction * ac,const char * app )
 {
-	Q_UNUSED( m ) ;
-
 	auto e = ac->text() ;
 
 	e.remove( "&" ) ;
 
 	utility::setLocalizationLanguage( app,e ) ;
+
+	utility::setLocalizationLanguage( true,m,app ) ;
+
+	_selectOption( m,e ) ;
+
+	return ;
 
 	DialogMsg msg( w ) ;
 
@@ -1759,11 +1736,97 @@ QStringList utility::directoryList( const QString& e )
 	return l ;
 }
 
-QIcon utility::getIcon( const QString& application )
+static QString _iconNamePath( const QString& app )
 {
-	QIcon icon( INSTALL_PREFIX "/share/icons/hicolor/48x48/apps/" + application + ".png" ) ;
+	return utility::homePath() + "/.zuluCrypt/" + app + ".iconName" ;
+}
 
-	return QIcon::fromTheme( application,icon ) ;
+void utility::setIconMenu( const QString& app,QAction * ac,QWidget * w,
+			   std::function< void( const QString& ) >&& function )
+{
+	ac->setMenu( [ & ](){
+
+		auto m = new QMenu( w ) ;
+
+		auto n = new utility::selectMenuOption( m,true,std::move( function ) ) ;
+
+		w->connect( m,SIGNAL( triggered( QAction * ) ),n,SLOT( selectOption( QAction * ) ) ) ;
+
+		if( !QFile::exists( _iconNamePath( app ) ) ){
+
+			utility::setIcons( app,app ) ;
+		}
+
+		QFile f( _iconNamePath( app ) ) ;
+
+		f.open( QIODevice::ReadOnly ) ;
+
+		QString s = f.readAll() ;
+
+		QDir d( INSTALL_PREFIX "/share/icons/hicolor/48x48/apps/" ) ;
+
+		d.setNameFilters( { "zuluCrypt.*","zuluMount.*" } ) ;
+
+		for( auto& it : d.entryList() ){
+
+			if( it.startsWith( app ) ){
+
+				if( it != "zuluCrypt.png" && it != "zuluMount.png" ){
+
+					it.remove( app + "." ) ;
+				}
+
+				it.remove( ".png" ) ;
+
+				auto ac = m->addAction( it ) ;
+
+				ac->setCheckable( true ) ;
+
+				ac->setChecked( it == s ) ;
+			}
+		}
+
+		return m ;
+	}() ) ;
+}
+
+void utility::setIcons( const QString& app,const QString& iconName )
+{
+	QFile f( _iconNamePath( app ) ) ;
+
+	f.open( QIODevice::WriteOnly | QIODevice::Truncate ) ;
+
+	f.write( iconName.toLatin1() ) ;
+
+	utility::changePathOwner( f ) ;
+	utility::changePathPermissions( f ) ;
+}
+
+QIcon utility::getIcon( const QString& app )
+{
+	if( !QFile::exists( _iconNamePath( app ) ) ){
+
+		utility::setIcons( app,app ) ;
+	}
+
+	QFile f( _iconNamePath( app ) ) ;
+
+	if( f.open( QIODevice::ReadOnly ) ){
+
+		QString e = f.readAll() ;
+
+		if( e == "zuluCrypt" || e == "zuluMount" ){
+
+			QIcon icon( INSTALL_PREFIX "/share/icons/hicolor/48x48/apps/" + e + ".png" ) ;
+			return QIcon::fromTheme( app,icon ) ;
+		}else{
+			return QIcon( INSTALL_PREFIX "/share/icons/hicolor/48x48/apps/" + app + "." + e + ".png" ) ;
+		}
+	}else{
+		QIcon icon( INSTALL_PREFIX "/share/icons/hicolor/48x48/apps/" + app + ".png" ) ;
+
+		return QIcon::fromTheme( app,icon ) ;
+	}
 }
 
 static QString _veraCryptOptionPath( const QString& app )
@@ -1800,9 +1863,7 @@ void utility::autoOpenFolderOnMount( const QString& app,bool e )
 
 		QFile::remove( x ) ;
 	}else{
-		QFile f( x ) ;
-		f.open( QIODevice::WriteOnly ) ;
-		f.close() ;
+		QFile( x ).open( QIODevice::WriteOnly ) ;
 	}
 }
 
@@ -1825,4 +1886,52 @@ QString utility::powerOffCommand()
 	}
 
 	return e ;
+}
+
+QString utility::prettyfySpaceUsage( quint64 s )
+{
+	auto _convert = [ & ]( const char * p,double q ){
+
+		auto e = QString::number( double( s ) / q,'f',2 ) ;
+
+		e.remove( ".00" ) ;
+
+		return QString( "%1 %2" ).arg( e,p ) ;
+	} ;
+
+	switch( QString::number( s ).size() ){
+
+		case 0 :
+		case 1 : case 2 : case 3 :
+
+			return QString( "%1 B" ).arg( QString::number( s ) ) ;
+
+		case 4 : case 5 : case 6 :
+
+			return _convert( "KB",1024 ) ;
+
+		case 7 : case 8 : case 9 :
+
+			return _convert( "MB",1048576 ) ;
+
+		case 10: case 11 : case 12 :
+
+			return _convert( "GB",1073741824 ) ;
+
+		default:
+			return _convert( "TB",1024.0 * 1073741824 ) ;
+	}
+}
+
+void utility::createHomeFolder()
+{
+	utility::createFolderPath( utility::homePath() + "/.zuluCrypt/" ) ;
+}
+
+void utility::createFolderPath( const QString& e )
+{
+	QDir().mkdir( e ) ;
+
+	utility::changePathOwner( e ) ;
+	utility::changePathPermissions( e,0777 ) ;
 }

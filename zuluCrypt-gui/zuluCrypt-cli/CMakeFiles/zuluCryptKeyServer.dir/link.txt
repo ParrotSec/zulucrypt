@@ -1,1 +1,0 @@
-/usr/bin/cc     CMakeFiles/zuluCryptKeyServer.dir/__/plugins/network_key/server.c.o CMakeFiles/zuluCryptKeyServer.dir/__/lxqt_wallet/backend/lxqtwallet.c.o  -o zuluCryptKeyServer -rdynamic ../libcrypt_buffer.a -lgcrypt 

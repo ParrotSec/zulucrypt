@@ -49,22 +49,25 @@ openvolume::openvolume( QWidget * parent ) : QDialog( parent ),m_ui( new Ui::ope
 	this->setFixedSize( this->size() ) ;
 	this->setFont( parent->font() ) ;
 
-	connect( m_ui->tableWidget,SIGNAL( itemDoubleClicked( QTableWidgetItem * ) ),this,SLOT( tableEntryDoubleClicked( QTableWidgetItem * ) ) ) ;
-	connect( m_ui->tableWidget,SIGNAL( currentItemChanged( QTableWidgetItem *,QTableWidgetItem * ) ),this,
-		 SLOT( currentItemChanged( QTableWidgetItem *,QTableWidgetItem * ) ) ) ;
+	connect( m_ui->tableWidget,SIGNAL( itemDoubleClicked( QTableWidgetItem * ) ),
+		 this,SLOT( tableEntryDoubleClicked( QTableWidgetItem * ) ) ) ;
+	connect( m_ui->tableWidget,SIGNAL( currentItemChanged( QTableWidgetItem *,QTableWidgetItem * ) ),
+		 this,SLOT( currentItemChanged( QTableWidgetItem *,QTableWidgetItem * ) ) ) ;
 	connect( m_ui->pbHelp,SIGNAL( clicked() ),this,SLOT( pbHelp() ) ) ;
 	connect( m_ui->pbUUID,SIGNAL( clicked() ),this,SLOT( pbUUID() ) ) ;
 	connect( m_ui->pbCancel,SIGNAL( clicked() ),this,SLOT( pbCancel() ) ) ;
+	connect( m_ui->pbOpen,SIGNAL( clicked() ),this,SLOT( pbOpen() ) ) ;
 
-	m_action = new QAction( this ) ;
-	QList<QKeySequence> keys ;
-	keys.append( Qt::Key_Enter ) ;
-	keys.append( Qt::Key_Return ) ;
-	m_action->setShortcuts( keys ) ;
+	this->addAction( [ this ](){
 
-	connect( m_action,SIGNAL( triggered() ),this,SLOT( EnterKeyPressed() ) ) ;
+		auto ac = new QAction( this ) ;
 
-	this->addAction( m_action ) ;
+		ac->setShortcuts( { Qt::Key_Enter,Qt::Key_Return } ) ;
+
+		connect( ac,SIGNAL( triggered() ),this,SLOT( EnterKeyPressed() ) ) ;
+
+		return ac ;
+	}() ) ;
 
 	auto tw = m_ui->tableWidget ;
 
@@ -87,6 +90,8 @@ openvolume::openvolume( QWidget * parent ) : QDialog( parent ),m_ui( new Ui::ope
 	m_ui->pbHelp->setVisible( false ) ;
 
 	this->installEventFilter( this ) ;
+
+	this->disableAll() ;
 }
 
 bool openvolume::eventFilter( QObject * watched,QEvent * event )
@@ -155,7 +160,7 @@ void openvolume::EnterKeyPressed()
 
 void openvolume::currentItemChanged( QTableWidgetItem * current, QTableWidgetItem * previous )
 {
-	tablewidget::selectTableRow( current,previous ) ;
+	tablewidget::selectRow( current,previous ) ;
 }
 
 void openvolume::ShowNonSystemPartitions( std::function< void( const QString& ) > f )
@@ -181,7 +186,7 @@ void openvolume::ShowAllPartitions( std::function< void( const QString& ) > f )
 
 void openvolume::allowLUKSOnly()
 {
-	m_diableNonLUKS = true ;
+	m_disableNonLUKS = true ;
 }
 
 void openvolume::partitionList( const QString& title,const QString& volumeType )
@@ -252,36 +257,70 @@ void openvolume::partitionList( const QString& title,const QString& volumeType )
 
 					if( fs.startsWith( "crypto_LUKS" ) ){
 
-						tablewidget::addRowToTable( m_ui->tableWidget,z,font ) ;
+						tablewidget::addRow( m_ui->tableWidget,z,font ) ;
 					}
 				}else if( m_showEncryptedOnly ){
 
 					if( fs.startsWith( "crypto" ) || fs.contains( "Nil" ) ){
 
-						tablewidget::addRowToTable( m_ui->tableWidget,z,font ) ;
+						tablewidget::addRow( m_ui->tableWidget,z,font ) ;
 					}
 				}else{
-					tablewidget::addRowToTable( m_ui->tableWidget,z,font ) ;
+					tablewidget::addRow( m_ui->tableWidget,z,font ) ;
 				}
 			}
 		}
 	}
 
-	m_ui->tableWidget->setEnabled( true ) ;
+	m_ui->pbOpen->setEnabled( m_ui->tableWidget->rowCount() > 0 ) ;
+
 	m_ui->tableWidget->setFocus() ;
+
+	this->enableAll() ;
+}
+
+void openvolume::enableAll()
+{
+	m_ui->tableWidget->setEnabled( true ) ;
+	m_ui->pbCancel->setEnabled( true ) ;
+	m_ui->pbOpen->setEnabled( true ) ;
+	m_ui->pbUUID->setEnabled( true ) ;
+	m_ui->pbHelp->setEnabled( true ) ;
+}
+
+void openvolume::disableAll()
+{
+	m_ui->tableWidget->setEnabled( false ) ;
+	m_ui->pbCancel->setEnabled( false ) ;
+	m_ui->pbOpen->setEnabled( false ) ;
+	m_ui->pbUUID->setEnabled( false ) ;
+	m_ui->pbHelp->setEnabled( false ) ;
 }
 
 void openvolume::HideUI()
 {
-	this->hide() ;
-	this->deleteLater() ;
+	if( m_ui->pbCancel->isEnabled() ){
+
+		this->hide() ;
+		this->deleteLater() ;
+	}
+}
+
+void openvolume::pbOpen()
+{
+	auto table = m_ui->tableWidget ;
+
+	if( table->rowCount() > 0 ){
+
+		this->tableEntryDoubleClicked( table->currentItem() ) ;
+	}
 }
 
 void openvolume::tableEntryDoubleClicked( QTableWidgetItem * item )
 {
 	auto tw = m_ui->tableWidget ;
 
-	if( m_diableNonLUKS ){
+	if( m_disableNonLUKS ){
 
 		if( !tw->item( item->row(),3 )->text().startsWith( "crypto_LUKS" ) ){
 

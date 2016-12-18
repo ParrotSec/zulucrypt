@@ -1,1 +1,0 @@
-/usr/bin/cc  -fPIC   -shared -Wl,-soname,libzuluCryptPluginManager.so.1.0.0 -o libzuluCryptPluginManager.so.1.0.0 CMakeFiles/zuluCryptPluginManager.dir/pluginManager/zuluCryptPluginManager.c.o libSocket.a libProcess.a libString.a -pthread 

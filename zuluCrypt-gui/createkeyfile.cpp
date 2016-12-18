@@ -44,10 +44,12 @@
 createkeyfile::createkeyfile( QWidget * parent ) : QDialog( parent ),m_ui( new Ui::createkeyfile )
 {
 	m_ui->setupUi( this ) ;
+
 	this->setFixedSize( this->size() ) ;
 	this->setFont( parent->font() ) ;
 
 	m_ui->pbOpenFolder->setIcon( QIcon( ":/folder.png" ) ) ;
+
 	connect( m_ui->pbCreate,SIGNAL( clicked() ),this,SLOT( pbCreate() ) ) ;
 	connect( m_ui->pbOpenFolder,SIGNAL( clicked() ),this,SLOT( pbOpenFolder() ) ) ;
 	connect( m_ui->pbCancel,SIGNAL( clicked() ),this,SLOT( pbCancel() ) ) ;
@@ -194,7 +196,7 @@ void createkeyfile::pbCreate()
 
 				m_stop = true ;
 			}else{
-				utility::changeFileOwner( sink ) ;
+				utility::changePathOwner( sink ) ;
 
 				for( int i = 0 ; i < 64 ; i++ ){
 
@@ -225,12 +227,22 @@ void createkeyfile::pbOpenFolder()
 {
 	auto p = tr( "Select A Folder To Create A Key File In" ) ;
 	auto q = utility::homePath() ;
-	auto Z = QFileDialog::getExistingDirectory( this,p,q,QFileDialog::ShowDirsOnly ) ;
+	auto x = QFileDialog::getExistingDirectory( this,p,q,QFileDialog::ShowDirsOnly ) ;
 
-	if( !Z.isEmpty() ){
+	while( true ){
 
-		Z = Z + "/" + m_ui->lineEditPath->text().split( "/" ).last() ;
-		m_ui->lineEditPath->setText( Z ) ;
+		if( x.endsWith( '/' ) ){
+
+			x.truncate( x.length() - 1 ) ;
+		}else{
+			break ;
+		}
+	}
+
+	if( !x.isEmpty() ){
+
+		x = x + "/" + m_ui->lineEditPath->text().split( "/" ).last() ;
+		m_ui->lineEditPath->setText( x ) ;
 	}
 }
 

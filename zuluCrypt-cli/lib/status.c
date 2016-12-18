@@ -30,7 +30,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#include "tcplay_support.h"
+#include "zuluplay_support.h"
 #include "share_mount_prefix_path.h"
 
 #define SIZE 1024
@@ -288,7 +288,7 @@ int zuluCryptTrueCryptOrVeraCryptVolume( const char * mapper )
 
 	tc_api_get_volume_type( buffer,sizeof( buffer ),mapper ) ;
 
-	return StringsAreEqual( buffer,"TCRYPT" ) || StringsAreEqual( buffer,"VCRYPT" ) ;
+	return StringAtLeastOneMatch_1( buffer,"TCRYPT","VCRYPT",NULL ) ;
 }
 
 char * zuluCryptGetVolumeTypeFromMapperPath( const char * mapper )

@@ -62,7 +62,7 @@ tcrypt::tcrypt( QWidget * parent,bool e,
 
 void tcrypt::currentItemChanged( QTableWidgetItem * current,QTableWidgetItem * previous )
 {
-	tablewidget::selectTableRow( current,previous ) ;
+	tablewidget::selectRow( current,previous ) ;
 }
 
 void tcrypt::itemClicked( QTableWidgetItem * item )
@@ -96,13 +96,13 @@ void tcrypt::dropEvent( QDropEvent * e )
 {
 	for( const auto& it : e->mimeData()->urls() ){
 
-		tablewidget::addRowToTable( m_ui->tableWidget,QStringList( it.path() ) ) ;
+		tablewidget::addRow( m_ui->tableWidget,{ it.path() } ) ;
 	}
 }
 
 void tcrypt::pbSend()
 {
-	auto l = tablewidget::tableColumnEntries( m_ui->tableWidget ) ;
+	auto l = tablewidget::columnEntries( m_ui->tableWidget ) ;
 
 	if( l.isEmpty() ){
 
@@ -129,11 +129,11 @@ void tcrypt::pbCancel()
 
 void tcrypt::pbAddKeyFIle()
 {
-	auto e = QFileDialog::getOpenFileName( this,tr( "Select A KeyFile" ),utility::homePath(),0 ) ;
+	auto e = QFileDialog::getOpenFileName( this,tr( "Select A KeyFile" ),utility::homePath() ) ;
 
 	if( !e.isEmpty() ){
 
-		tablewidget::addRowToTable( m_ui->tableWidget,QStringList( e ) ) ;
+		tablewidget::addRow( m_ui->tableWidget,{ e } ) ;
 	}
 }
 

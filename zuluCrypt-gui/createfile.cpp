@@ -159,7 +159,7 @@ the encrypted container and manage to derive meaning based on how the container 
 If you know what you are doing,then continue by all means,if in doubt,my advise is to endure the \
 process and be safer in the long run." ) ;
 
-		msg.ShowUIInfo( tr( "INFO" ),m ) ;
+		msg.ShowUIInfo( tr( "INFO" ),false,m ) ;
 	}
 }
 
@@ -237,7 +237,7 @@ void createfile::pbCreate()
 		return msg.ShowUIOK( tr( "ERROR!" ),tr( "Failed to create volume file" ) ) ;
 	}
 
-	utility::changeFileOwner( file ) ;
+	utility::changePathOwner( file ) ;
 
 	file.close() ;
 
@@ -304,12 +304,22 @@ void createfile::pbOpenFolder()
 {
 	auto p = tr( "Select Path to where the file will be created" ) ;
 	auto q = utility::homePath() ;
-	auto Z = QFileDialog::getExistingDirectory( this,p,q,QFileDialog::ShowDirsOnly ) ;
+	auto x = QFileDialog::getExistingDirectory( this,p,q,QFileDialog::ShowDirsOnly ) ;
 
-	if( !Z.isEmpty() ){
+	while( true ){
 
-		Z = Z + "/" + m_ui->lineEditFilePath->text().split( "/" ).last() ;
-		m_ui->lineEditFilePath->setText( Z ) ;
+		if( x.endsWith( '/' ) ){
+
+			x.truncate( x.length() - 1 ) ;
+		}else{
+			break ;
+		}
+	}
+
+	if( !x.isEmpty() ){
+
+		x = x + "/" + m_ui->lineEditFilePath->text().split( "/" ).last() ;
+		m_ui->lineEditFilePath->setText( x ) ;
 	}
 }
 

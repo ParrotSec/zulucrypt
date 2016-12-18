@@ -6,6 +6,8 @@ Uploaders:
 Build-Depends: chrpath, debhelper (>= 9), cmake, pkg-config, libcryptsetup-dev, libblkid-dev, libdevmapper-dev, uuid-dev, libgcrypt11-dev, libqt4-dev, libudev-dev, bzip2, qt5keychain-dev, qtkeychain-dev, libkf5wallet-dev, qtbase5-dev, qttools5-dev, libsecret-1-dev, libpwquality-dev
 Standards-Version: 3.9.8
 Homepage: http://mhogomchungu.github.io/zuluCrypt/
+Vcs-Git: git://git@github.com:mhogomchungu/zuluCrypt.git
+Vcs-Browser: https://github.com/mhogomchungu/zuluCrypt
 
 Package: zulucrypt
 Architecture: all

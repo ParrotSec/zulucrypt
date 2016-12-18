@@ -20,30 +20,27 @@
 #ifndef CHECKFORUPDATES_H
 #define CHECKFORUPDATES_H
 
+#include <QVector>
 #include <QObject>
-#include <QtNetwork/QNetworkAccessManager>
+#include <QWidget>
 
-class QWidget ;
-class QNetworkReply ;
-
-#include <memory>
-
-class QNetworkReply ;
-class QWidget ;
+#include "networkAccessManager.hpp"
 
 class checkForUpdates : public QObject
 {
-	Q_OBJECT
 public:
+	static bool autoCheck( void ) ;
+	static void autoCheck( bool ) ;
+
 	checkForUpdates( QWidget *,bool ) ;
+
 	static void instance( QWidget *,const QString& ) ;
 	static void instance( QWidget * ) ;
-public slots:
-	void networkReply( QNetworkReply * ) ;
 private:
+	void show( const QByteArray&,const QByteArray& ) ;
 	QWidget * m_widget ;
 	bool m_autocheck ;
-	QNetworkAccessManager m_manager ;
+	NetworkAccessManager m_networkAccessManager ;
 };
 
 #endif // CHECKFORUPDATES_H

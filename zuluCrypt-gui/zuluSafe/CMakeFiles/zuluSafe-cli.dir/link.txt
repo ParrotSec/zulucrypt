@@ -1,1 +1,0 @@
-/usr/bin/cc    -pie CMakeFiles/zuluSafe-cli.dir/zuluSafe.c.o CMakeFiles/zuluSafe-cli.dir/__/lxqt_wallet/backend/lxqtwallet.c.o  -o zuluSafe-cli -rdynamic -lgcrypt 
