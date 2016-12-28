@@ -1,0 +1,268 @@
+Description: Fixes spelling errors
+Author: Marcio de Souza Oliveira <m.desouza20@gmail.com>
+Last-Update: 2016-12-13
+
+Index: zulucrypt-5.0.2/zuluCrypt-cli/bin/create_volumes.c
+===================================================================
+--- zulucrypt-5.0.2.orig/zuluCrypt-cli/bin/create_volumes.c
++++ zulucrypt-5.0.2/zuluCrypt-cli/bin/create_volumes.c
+@@ -49,7 +49,7 @@ only root user or members of group zuluc
+ 		case 13: printf( gettext( "ERROR: Passphrases do not match\n" ) ) ;					break  ;
+ 		case 14: printf( gettext( "ERROR: Invalid path to key file\n" ) ) ;					break  ;
+ 		case 15: printf( gettext( "ERROR: Could not get a key from a key file\n" ) ) ;				break  ;
+-		case 16: printf( gettext( "ERROR: Couldnt get enought memory to hold the key file\n" ) ) ;		break  ;
++		case 16: printf( gettext( "ERROR: Could not get enough memory to hold the key file\n" ) ) ;		break  ;
+ 		case 17: printf( gettext( "ERROR: Could not get a key from a socket\n" ) ) ;				break  ;
+ 		case 18: printf( gettext( "ERROR: One or more required argument(s) for this operation is missing\n" ));	break  ;
+ 		case 19: printf( gettext( "ERROR: Can not get passphrase in silent mode\n" ) ) ;			break  ;
+@@ -68,7 +68,7 @@ static int zuluExit_1( const char * type
+ 
+ 	if( StringAtLeastOneMatch_1( type,"luks","luks1","luks2","tcrypt","truecrypt","veracrypt","vera","vcrypt",NULL ) ){
+ 
+-		printf( gettext( "\nCreating a backup of the \"%s\" volume header is strongly adviced.\n" ),type ) ;
++		printf( gettext( "\nCreating a backup of the \"%s\" volume header is strongly advised.\n" ),type ) ;
+ 		printf( gettext( "Please read documentation on why this is important\n\n" ) ) ;
+ 	}
+ 
+Index: zulucrypt-5.0.2/zuluCrypt-cli/bin/write_device_with_junk.c
+===================================================================
+--- zulucrypt-5.0.2.orig/zuluCrypt-cli/bin/write_device_with_junk.c
++++ zulucrypt-5.0.2/zuluCrypt-cli/bin/write_device_with_junk.c
+@@ -73,7 +73,7 @@ static int zuluExit( stringList_t stl, i
+ 		case 8 : printf( gettext( "ERROR: Insufficitied privilege to oped device \n" ) ) 			;break ;
+ 		case 9 : printf( gettext( "ERROR: Device path is invalid\n" ) )						;break ;
+ 		case 10: printf( gettext( "ERROR: Passphrase file does not exist\n" ) ) 				;break ;
+-		case 11: printf( gettext( "ERROR: Could not get enought memory to hold the key file\n" ) ) 	 	;break ;
++		case 11: printf( gettext( "ERROR: Could not get enough memory to hold the key file\n" ) ) 	 	;break ;
+ 		case 12: printf( gettext( "ERROR: Insufficient privilege to open key file for reading\n" ) )	       	;break ;
+ 		case 13: printf( gettext( "ERROR: Can not open a mapper on a device with an opened mapper\n" ) )	;break ;
+ 		case 14: printf( gettext( "ERROR: Can not open a mapper on a mounted device\n" ) ) 			;break ;
+Index: zulucrypt-5.0.2/zuluCrypt-cli/bin/add_key.c
+===================================================================
+--- zulucrypt-5.0.2.orig/zuluCrypt-cli/bin/add_key.c
++++ zulucrypt-5.0.2/zuluCrypt-cli/bin/add_key.c
+@@ -180,7 +180,7 @@ only root user or members of group \"zul
+ 		case 10 : printf( gettext( "ERROR: One or more required argument(s) for this operation is missing\n" ));break ;
+ 		case 11 : printf( gettext( "ERROR: One or both keyfile(s) does not exist\n" ) ) ;                      	break ;
+ 		case 12 : printf( gettext( "ERROR: Insufficient privilege to open key file for reading\n" ) ) ;		break ;
+-		case 13 : printf( gettext( "ERROR: Couldnt get enought memory to hold the key file\n" ) ) ;	     	break ;
++		case 13 : printf( gettext( "ERROR: Could not get enough memory to hold the key file\n" ) ) ;	     	break ;
+ 		case 14 : printf( gettext( "ERROR: Could not get a key from a socket\n" ) ) ;				break ;
+ 		case 15 : printf( gettext( "ERROR: Could not get elevated privilege,check binary permissions\n" ) ) ;	break ;
+ 		default : printf( gettext( "ERROR: Unrecognized error with status number %d encountered\n" ),st ) ;
+Index: zulucrypt-5.0.2/zuluCrypt-gui/password_dialog.cpp
+===================================================================
+--- zulucrypt-5.0.2.orig/zuluCrypt-gui/password_dialog.cpp
++++ zulucrypt-5.0.2/zuluCrypt-gui/password_dialog.cpp
+@@ -736,12 +736,12 @@ void passwordDialog::failed( int r )
+ 		case 14: msg.ShowUIOK( tr( "ERROR!" ),tr( "Insufficient memory to hold passphrase" ) ) ;							break ;
+ 		case 15: msg.ShowUIOK( tr( "ERROR!" ),tr( "One or more required argument(s) for this operation is missing" ) ) ;				break ;
+ 		case 16: msg.ShowUIOK( tr( "ERROR!" ),tr( "Invalid path to key file" ) ) ;								break ;
+-		case 17: msg.ShowUIOK( tr( "ERROR!" ),tr( "Could not get enought memory to hold the key file" ) ) ;					break ;
++		case 17: msg.ShowUIOK( tr( "ERROR!" ),tr( "Could not get enough memory to hold the key file" ) ) ;					break ;
+ 		case 18: msg.ShowUIOK( tr( "ERROR!" ),tr( "Insufficient privilege to open key file for reading" ) ) ;					break ;
+ 		case 19: msg.ShowUIOK( tr( "ERROR!" ),tr( "Could not get a passphrase through a local socket" ) ) ;					break ;
+ 		case 20: msg.ShowUIOK( tr( "ERROR!" ),tr( "Failed to mount a filesystem:invalid/unsupported mount option or unsupported file system encountered" ) ) ;	break ;
+ 		case 21: msg.ShowUIOK( tr( "ERROR!" ),tr( "Could not create a lock on /etc/mtab" ) ) ;							break ;
+-		case 22: msg.ShowUIOK( tr( "ERROR!" ),tr( "Insufficient privilege to open a system volume.\n\nConsult menu->help->permission for more informaion\n" ) ) ;					break ;
++		case 22: msg.ShowUIOK( tr( "ERROR!" ),tr( "Insufficient privilege to open a system volume.\n\nConsult menu->help->permission for more information\n" ) ) ;					break ;
+ 		case 113:msg.ShowUIOK( tr( "ERROR!" ),tr( "A non supported device encountered,device is missing or permission denied\n\
+ Possible reasons for getting the error are:\n1.Device path is invalid.\n2.The device has LVM or MDRAID signature" ) ) ;					break ;
+ 		default: msg.ShowUIOK( tr( "ERROR!" ),tr( "Unrecognized ERROR with status number %1 encountered" ).arg( r ) ) ;
+Index: zulucrypt-5.0.2/zuluCrypt-gui/luksaddkey.cpp
+===================================================================
+--- zulucrypt-5.0.2.orig/zuluCrypt-gui/luksaddkey.cpp
++++ zulucrypt-5.0.2/zuluCrypt-gui/luksaddkey.cpp
+@@ -457,7 +457,7 @@ void luksaddkey::taskFinished( int r )
+ 		case 10 : msg.ShowUIOK( tr( "ERROR!" ),tr( "One or more required argument(s) for this operation is missing" ) ) ;      	break ;
+ 		case 11 : msg.ShowUIOK( tr( "ERROR!" ),tr( "One or both keyfile(s) does not exist" ) ) ;				break ;
+ 		case 12 : msg.ShowUIOK( tr( "ERROR!" ),tr( "Insufficient privilege to open key file for reading" ) ) ;			break ;
+-		case 13 : msg.ShowUIOK( tr( "ERROR!" ),tr( "Couldnt get enought memory to hold the key file" ) ) ;			break ;
++		case 13 : msg.ShowUIOK( tr( "ERROR!" ),tr( "Could not get enough memory to hold the key file" ) ) ;			break ;
+ 		case 14 : msg.ShowUIOK( tr( "ERROR!" ),tr( "Could not get a key from a socket" ) ) ;					break ;
+ 		case 15 : msg.ShowUIOK( tr( "ERROR!" ),tr( "Could not get elevated privilege,check binary permissions" ) ) ;		break ;
+ 		case 110: msg.ShowUIOK( tr( "ERROR!" ),tr( "Can not find a partition that match presented UUID" ) ) ;			break ;
+Index: zulucrypt-5.0.2/zuluCrypt-gui/createvolume.cpp
+===================================================================
+--- zulucrypt-5.0.2.orig/zuluCrypt-gui/createvolume.cpp
++++ zulucrypt-5.0.2/zuluCrypt-gui/createvolume.cpp
+@@ -1151,7 +1151,7 @@ only root user or members of group zuluc
+ 		case 13: msg.ShowUIOK( tr( "ERROR!" ),tr( "Passphrases do not match" ) ) ;						break  ;
+ 		case 14: msg.ShowUIOK( tr( "ERROR!" ),tr( "Invalid path to key file" ) ) ;						break  ;
+ 		case 15: msg.ShowUIOK( tr( "ERROR!" ),tr( "Could not get a key from a key file" ) ) ;					break  ;
+-		case 16: msg.ShowUIOK( tr( "ERROR!" ),tr( "Couldnt get enought memory to hold the key file" ) ) ;			break  ;
++		case 16: msg.ShowUIOK( tr( "ERROR!" ),tr( "Could not get enough memory to hold the key file" ) ) ;			break  ;
+ 		case 17: msg.ShowUIOK( tr( "ERROR!" ),tr( "Could not get a key from a socket" ) ) ;					break  ;
+ 		case 18: msg.ShowUIOK( tr( "ERROR!" ),tr( "One or more required argument(s) for this operation is missing" ) ) ;	break  ;
+ 		case 19: msg.ShowUIOK( tr( "ERROR!" ),tr( "Can not get passphrase in silent mode" ) ) ;					break  ;
+Index: zulucrypt-5.0.2/zuluMount-gui/keydialog.cpp
+===================================================================
+--- zulucrypt-5.0.2.orig/zuluMount-gui/keydialog.cpp
++++ zulucrypt-5.0.2/zuluMount-gui/keydialog.cpp
+@@ -562,12 +562,12 @@ bool keyDialog::errorNotFound( int r )
+ 		case 14: msg.ShowUIOK( tr( "ERROR!" ),tr( "Insufficient memory to hold passphrase" ) ) ;						break ;
+ 		case 15: msg.ShowUIOK( tr( "ERROR!" ),tr( "One or more required argument(s) for this operation is missing" ) ) ;			break ;
+ 		case 16: msg.ShowUIOK( tr( "ERROR!" ),tr( "Invalid path to key file" ) ) ;								break ;
+-		case 17: msg.ShowUIOK( tr( "ERROR!" ),tr( "Could not get enought memory to hold the key file" ) ) ;					break ;
++		case 17: msg.ShowUIOK( tr( "ERROR!" ),tr( "Could not get enough memory to hold the key file" ) ) ;					break ;
+ 		case 18: msg.ShowUIOK( tr( "ERROR!" ),tr( "Insufficient privilege to open key file for reading" ) ) ;					break ;
+ 		case 19: msg.ShowUIOK( tr( "ERROR!" ),tr( "Could not get a passphrase through a local socket" ) ) ;					break ;
+ 		case 20: msg.ShowUIOK( tr( "ERROR!" ),tr( "Failed to mount a filesystem:invalid/unsupported mount option or unsupported file system encountered" ) ) ;	break ;
+ 		case 21: msg.ShowUIOK( tr( "ERROR!" ),tr( "Could not create a lock on /etc/mtab" ) ) ;							break ;
+-		case 22: msg.ShowUIOK( tr( "ERROR!" ),tr( "Insufficient privilege to open a system volume.\n\nConsult menu->help->permission for more informaion\n" ) ) ;					break ;
++		case 22: msg.ShowUIOK( tr( "ERROR!" ),tr( "Insufficient privilege to open a system volume.\n\nConsult menu->help->permission for more information\n" ) ) ;					break ;
+ 		case 113:msg.ShowUIOK( tr( "ERROR!" ),tr( "A non supported device encountered,device is missing or permission denied\n\
+ Possible reasons for getting the error are:\n1.Device path is invalid.\n2.The device has LVM or MDRAID signature" ) ) ;					break ;
+ 		default: return true ;
+Index: zulucrypt-5.0.2/zuluCrypt-gui/erasedevice.cpp
+===================================================================
+--- zulucrypt-5.0.2.orig/zuluCrypt-gui/erasedevice.cpp
++++ zulucrypt-5.0.2/zuluCrypt-gui/erasedevice.cpp
+@@ -108,7 +108,7 @@ void erasedevice::taskResult( int st )
+ 		case 8: msg.ShowPermissionProblem( "Writing",m_ui->lineEdit->text() )				;break ;
+ 		case 9: msg.ShowUIOK( tr( "ERROR!" ),tr( "Device path is invalid" ) )						;break ;
+ 		case 10:msg.ShowUIOK( tr( "ERROR!" ),tr( "Passphrase file does not exist" ) )					;break ;
+-		case 11:msg.ShowUIOK( tr( "ERROR!" ),tr( "Could not get enought memory to hold the key file" ) )		;break ;
++		case 11:msg.ShowUIOK( tr( "ERROR!" ),tr( "Could not get enough memory to hold the key file" ) )		;break ;
+ 		case 12:msg.ShowUIOK( tr( "ERROR!" ),tr( "Insufficient privilege to open key file for reading" ) )		;break ;
+ 		case 13:msg.ShowUIOK( tr( "ERROR!" ),tr( "This device appear to already be in use" ) )				;break ;
+ 		case 14:msg.ShowUIOK( tr( "ERROR!" ),tr( "Can not open a mapper on a mounted device" ) )			;break ;
+Index: zulucrypt-5.0.2/zuluCrypt-cli/bin/open_volume.c
+===================================================================
+--- zulucrypt-5.0.2.orig/zuluCrypt-cli/bin/open_volume.c
++++ zulucrypt-5.0.2/zuluCrypt-cli/bin/open_volume.c
+@@ -174,7 +174,7 @@ static int zuluExit( int st,const char *
+ 		case 14: printf( gettext( "ERROR: Insufficient memory to hold passphrase\n" ) ) ;						break ;
+ 		case 15: printf( gettext( "ERROR: One or more required argument(s) for this operation is missing\n" ) ) ;			break ;
+ 		case 16: printf( gettext( "ERROR: Invalid path to key file\n" ) ) ;								break ;
+-		case 17: printf( gettext( "ERROR: Could not get enought memory to hold the key file\n" ) ) ;					break ;
++		case 17: printf( gettext( "ERROR: Could not get enough memory to hold the key file\n" ) ) ;					break ;
+ 		case 18: printf( gettext( "ERROR: Insufficient privilege to open key file for reading\n" ) );					break ;
+ 		case 19: printf( gettext( "ERROR: Could not get a passphrase through a local socket\n" ) );					break ;
+ 		case 20: printf( gettext( "ERROR: Failed to mount a filesystem:invalid/unsupported mount option or unsupported file system encountered\n" ) );break ;
+Index: zulucrypt-5.0.2/zuluCrypt-cli/bin/main.c
+===================================================================
+--- zulucrypt-5.0.2.orig/zuluCrypt-cli/bin/main.c
++++ zulucrypt-5.0.2/zuluCrypt-cli/bin/main.c
+@@ -626,7 +626,7 @@ int main( int argc,char * argv[] )
+ 		switch( zuluCryptGetDeviceFileProperties( device,&fd,&fd1,&dev,uid ) ){
+ 
+ 			case 0 : break ;
+-			case 1 : return zuluExit( 111,stl,stx,env,gettext( "ERROR: Devices in /dev/shm/ path is not suppored" ) ) ;
++			case 1 : return zuluExit( 111,stl,stx,env,gettext( "ERROR: Devices in /dev/shm/ path is not supported" ) ) ;
+ 			case 2 : return zuluExit( 112,stl,stx,env,gettext( "ERROR: Given path is a directory" ) ) ;
+ 			case 3 : return zuluExit( 113,stl,stx,env,gettext( "ERROR: A file can have only one hard link" ) ) ;
+ 			case 4 : return zuluExit( 113,stl,stx,env,gettext( "ERROR: Insufficient privilges to access the device" ) ) ;
+Index: zulucrypt-5.0.2/zuluMount-cli/main.c
+===================================================================
+--- zulucrypt-5.0.2.orig/zuluMount-cli/main.c
++++ zulucrypt-5.0.2/zuluMount-cli/main.c
+@@ -463,7 +463,7 @@ Possible reasons for getting the error a
+ 				 close( fd ) ;
+ 			 }
+ 			 return status ;
+-		case 1 : printf( gettext( "ERROR: Devices in /dev/shm path is not suppored\n" ) ) ;	return 220 ;
++		case 1 : printf( gettext( "ERROR: Devices in /dev/shm path is not supported\n" ) ) ;	return 220 ;
+ 		case 2 : printf( gettext( "ERROR: Given path is a directory\n" ) ) ;  			return 221 ;
+ 		case 3 : printf( gettext( "ERROR: A file can have only one hard link\n" ) ) ;		return 222 ;
+ 		case 4 : printf( gettext( "ERROR: Insufficient privilges to access the device\n" ) ) ; 	return 223 ;
+Index: zulucrypt-5.0.2/zuluCrypt-cli/bin/save_and_restore_volume_header.c
+===================================================================
+--- zulucrypt-5.0.2.orig/zuluCrypt-cli/bin/save_and_restore_volume_header.c
++++ zulucrypt-5.0.2/zuluCrypt-cli/bin/save_and_restore_volume_header.c
+@@ -44,7 +44,7 @@ static int zuluExit( int st,const char *
+ 		case 2 : printf( gettext( "ERROR: Presented device is not a LUKS device\n" ) ) 					; break ;
+ 		case 3 : printf( gettext( "ERROR: Failed to perform requested operation\n" ) )					; break ;
+ 		case 4 : printf( gettext( "ERROR: Failed to perform requested operation\n" ) )					; break ;
+-		case 5 : printf( gettext( "INFO: Operation terminater per user request\n" ) )					; break ;
++		case 5 : printf( gettext( "INFO: Operation terminate per user request\n" ) )					; break ;
+ 		case 6 : printf( gettext( "ERROR: Path to be used to create a back up file is occupied or permission denied\n" ) ); break ;
+ 		case 7 : printf( gettext( "ERROR: Failed to perform requested operation\n" ) )					; break ;
+ 		case 8 : printf( gettext( "ERROR: Insufficient privilege to open backup header file for reading\n" ) )		; break ;
+@@ -58,7 +58,7 @@ static int zuluExit( int st,const char *
+ 		case 16: printf( gettext( "ERROR: Could not resolve path to device\n" ) )					; break ;
+ 		case 17: printf( gettext( "ERROR: Backup file does not appear to contain luks header\n" ) )			; break ;
+ 		case 18: printf( gettext( "ERROR: Insufficient privilege to open device for reading\n" ) )			; break ;
+-		case 19: printf( gettext( "ERROR: Insufficient memory to hold your responce\n" ) )	 			; break ;
++		case 19: printf( gettext( "ERROR: Insufficient memory to hold your response\n" ) )	 			; break ;
+ 		case 20: printf( gettext( "ERROR: Wrong password entered or volume is not a truecrypt volume\n" ) )		; break ;
+ 	}
+ 
+Index: zulucrypt-5.0.2/zuluCrypt-gui/managevolumeheader.cpp
+===================================================================
+--- zulucrypt-5.0.2.orig/zuluCrypt-gui/managevolumeheader.cpp
++++ zulucrypt-5.0.2/zuluCrypt-gui/managevolumeheader.cpp
+@@ -516,7 +516,7 @@ void managevolumeheader::taskFinished( i
+ 		case 2 : msg.ShowUIOK( tr( "ERROR!" ),tr( "Oresented device is not a LUKS device" ) )					; break ;
+ 		case 3 : msg.ShowUIOK( tr( "ERROR!" ),tr( "Failed to perform requested operation" ) )					; break ;
+ 		case 4 : msg.ShowUIOK( tr( "ERROR!" ),tr( "Failed to perform requested operation" ) )					; break ;
+-		case 5 : msg.ShowUIOK( tr( "INFO!"  ),tr( "Operation terminater per user request" ) )					; break ;
++		case 5 : msg.ShowUIOK( tr( "INFO!"  ),tr( "Operation terminate per user request" ) )					; break ;
+ 		case 6 : msg.ShowUIOK( tr( "ERROR!" ),tr( "Path to be used to create a back up file is occupied" ) ) 			; break ;
+ 		case 7 : msg.ShowUIOK( tr( "ERROR!" ),tr( "Failed to perform requested operation" ) )					; break ;
+ 		case 8 : msg.ShowUIOK( tr( "ERROR!" ),tr( "Insufficient privilege to open backup header file for reading" ) ) 		; break ;
+Index: zulucrypt-5.0.2/zuluCrypt-gui/utility.cpp
+===================================================================
+--- zulucrypt-5.0.2.orig/zuluCrypt-gui/utility.cpp
++++ zulucrypt-5.0.2/zuluCrypt-gui/utility.cpp
+@@ -1509,7 +1509,7 @@ int utility::pluginKey( QWidget * w,QByt
+ 	}else if( p == "gpg" ){
+ 
+ 		pluginType   = plugins::plugin::gpg ;
+-		pluginString = QObject::tr( "gpg plugin.\n\nThis plugin retrives a key locked in a gpg file with a symmetric key" ) ;
++		pluginString = QObject::tr( "gpg plugin.\n\nThis plugin retrieves a key locked in a gpg file with a symmetric key" ) ;
+ 
+ 		if( utility::pathExists( "/usr/bin/gpg" ) ){
+ 
+Index: zulucrypt-5.0.2/zuluCrypt-gui/createkeyfile.cpp
+===================================================================
+--- zulucrypt-5.0.2.orig/zuluCrypt-gui/createkeyfile.cpp
++++ zulucrypt-5.0.2/zuluCrypt-gui/createkeyfile.cpp
+@@ -162,7 +162,7 @@ void createkeyfile::pbCreate()
+ 	}
+ 	if( !utility::canCreateFile( path ) ){
+ 
+-		msg.ShowUIOK( tr( "ERROR!" ),tr( "You dont seem to have writing access to the destination folder" ) ) ;
++		msg.ShowUIOK( tr( "ERROR!" ),tr( "You don't seem to have writing access to the destination folder" ) ) ;
+ 		m_ui->lineEditPath->setFocus() ;
+ 		return ;
+ 	}
+Index: zulucrypt-5.0.2/zuluCrypt-gui/cryptfiles.cpp
+===================================================================
+--- zulucrypt-5.0.2.orig/zuluCrypt-gui/cryptfiles.cpp
++++ zulucrypt-5.0.2/zuluCrypt-gui/cryptfiles.cpp
+@@ -251,7 +251,7 @@ void cryptfiles::pbCreate()
+ 	}
+ 	if( !utility::canCreateFile( dest ) ){
+ 
+-		return msg.ShowUIOK( tr( "ERROR!" ),tr( "You dont seem to have writing access to the destination folder" ) ) ;
++		return msg.ShowUIOK( tr( "ERROR!" ),tr( "You don't seem to have writing access to the destination folder" ) ) ;
+ 	}
+ 
+ 	auto key_1 = m_ui->lineEditPass_1->text() ;
+Index: zulucrypt-5.0.2/zuluCrypt-gui/createfile.cpp
+===================================================================
+--- zulucrypt-5.0.2.orig/zuluCrypt-gui/createfile.cpp
++++ zulucrypt-5.0.2/zuluCrypt-gui/createfile.cpp
+@@ -202,7 +202,7 @@ void createfile::pbCreate()
+ 		return msg.ShowUIOK( tr( "ERROR!" ),tr( "File with the same name and at the destination folder already exist" ) ) ;
+ 	}
+ 	if( !utility::canCreateFile( filePath ) ){
+-		msg.ShowUIOK( tr( "ERROR!" ),tr( "You dont seem to have writing access to the destination folder" ) ) ;
++		msg.ShowUIOK( tr( "ERROR!" ),tr( "You don't seem to have writing access to the destination folder" ) ) ;
+ 		m_ui->lineEditFilePath->setFocus() ;
+ 		return ;
+ 	}
+Index: zulucrypt-5.0.2/zuluCrypt-gui/lxqt_wallet/frontend/libsecret.c
+===================================================================
+--- zulucrypt-5.0.2.orig/zuluCrypt-gui/lxqt_wallet/frontend/libsecret.c
++++ zulucrypt-5.0.2/zuluCrypt-gui/lxqt_wallet/frontend/libsecret.c
+@@ -246,7 +246,7 @@ gboolean lxqt_libsecret_password_store_s
+ static gboolean _exceeded_limit( int k )
+ {
+ 	/*
+-	 * We dont expect to manage 10000 entries and getting this far most likely means we are
++	 * We don't expect to manage 10000 entries and getting this far most likely means we are
+ 	 * stuck in an endless loop
+ 	 */
+ 	return k == 10000 ;

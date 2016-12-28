@@ -1,0 +1,7 @@
+usr/bin/zuluMount-gui
+usr/share/man/man1/zuluMount-gui.1
+usr/share/zuluCrypt/translations/zuluMount-gui/*qm usr/share/zuluCrypt/translations/zuluMount-gui/
+debian/icons/zuluMount.xpm usr/share/pixmaps
+debian/zulumount-gui.desktop usr/share/applications
+debian/org.debian.pkexec.zulumount-gui.policy usr/share/polkit-1/actions/
+debian/zuluMount-gui-pkexec usr/share/zuluCrypt/

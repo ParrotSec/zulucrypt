@@ -1,0 +1,10 @@
+usr/lib/*/zuluCrypt/gpg
+usr/lib/*/zuluCrypt/keydialog-qt
+usr/lib/*/zuluCrypt/keykeyfile
+usr/lib/*/zuluCrypt/keyring
+usr/lib/*/zuluCrypt/luks
+usr/lib/*/zuluCrypt/steghide
+usr/lib/*/zuluCrypt/tomb
+usr/lib/*/zuluCrypt/zuluCrypt-testKey
+usr/lib/*/zuluCrypt/hmac
+usr/lib/*/zuluCrypt/generic_header

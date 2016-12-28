@@ -1,0 +1,6 @@
+?package(zulumount-gui):\
+	needs="X11"\
+	section="Applications/System/Administration"\
+	title="zulumount-gui - graphical front end for zulumount-cli"\
+	command="su-to-root -X -c /usr/bin/zuluMount-gui"\
+	icon="/usr/share/pixmaps/zuluMount.xpm"

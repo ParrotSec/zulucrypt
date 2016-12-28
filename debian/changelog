@@ -1,3 +1,46 @@
+zulucrypt (5.0.2-2parrot0) testing; urgency=medium
+
+  * Import debian patches
+  * Rebuild on parrot servers
+  * Remove launcher patch (now included with parrot-menu)
+
+ -- Lorenzo "Palinuro" Faletra <palinuro@parrotsec.org>  Wed, 28 Dec 2016 22:52:11 +0100
+
+zulucrypt (5.0.2-2) unstable; urgency=medium
+
+  * Updated the files zulu*-gui-pkexec to use /bin/sh instead
+    /bin/bash.
+
+ -- Marcio de Souza Oliveira <m.desouza20@gmail.com>  Thu, 15 Dec 2016 18:49:59 +0000
+
+zulucrypt (5.0.2-1) unstable; urgency=medium
+
+  * New upstream release.
+  * debian/control:
+      - Updated the long description of libzulucrypt-plugins package
+        to add generic_header plugin.
+      - Updated the long description of zulumount-gui package to add
+        support to unlock cryfs, encfs, gocryptfs and ecryptfs.
+      - Inserted the field Suggests in zulumount-gui package.
+      - Updated the long description the all packages.
+  * debian/copyright:
+      - Updated file.
+  * debian/rules:
+      - Updated to enable polkit support at build time.
+      - Updated file.
+  * debian/patches:
+      - Updated patch fix_spelling.
+  * Created new symbol files for libzulucrypt1.2.0,
+    libzuluCrypt-exe.so.1.2.0,libzulucryptpluginmanager1.0.0.
+  * Updated the files zulu*-gui-pkexec. Thanks Michael Biebl.
+    (Closes: #844698)
+  * Updated the file zulucrypt-gui.install to added files en_US.qm
+    and fr_FR.qm in zulucrypt-gui package.
+  * Updated the file zulumount-gui.install to added files en_US.qm
+    and fr_FR.qm in zulumount-gui package.
+
+ -- Marcio de Souza Oliveira <m.desouza20@gmail.com>  Mon, 12 Dec 2016 11:30:59 +0000
+
 zulucrypt (5.0.2-0parrot0) testing; urgency=medium
 
   * Import new upstream release

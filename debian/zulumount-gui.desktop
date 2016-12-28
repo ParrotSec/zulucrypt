@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=zuluMount
+GenericName=zulumount-gui
+Comment=Encrypted volumes and partition mounter
+Icon=zuluMount.xpm
+Exec=zuluMount-gui-pkexec
+Terminal=false
+StartupNotify=true
+Categories=System;Security
+Keywords=volumes;encrypting;luks;truecrypt;encrypt;security;cryptsetup
