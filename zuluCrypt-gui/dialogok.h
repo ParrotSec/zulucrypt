@@ -1,12 +1,12 @@
 /*
  *
- *  Copyright (c) 2015
+ *  Copyright ( c ) 2016
  *  name : Francis Banyikwa
  *  email: mhogomchungu@gmail.com
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 2 of the License, or
- *  (at your option) any later version.
+ *  ( at your option ) any later version.
  *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -17,31 +17,31 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef CHECKFORUPDATES_H
-#define CHECKFORUPDATES_H
+#ifndef DIALOGOK_H
+#define DIALOGOK_H
 
-#include <QVector>
-#include <QObject>
-#include <QWidget>
+#include <QDialog>
+#include <QString>
+#include <QCloseEvent>
 
-#include "networkAccessManager.hpp"
+namespace Ui {
+class dialogok;
+}
 
-class checkForUpdates : public QObject
+class dialogok : public QDialog
 {
 	Q_OBJECT
 public:
-	static bool autoCheck( void ) ;
-	static void autoCheck( bool ) ;
-
-	checkForUpdates( QWidget *,bool ) ;
-
-	static void instance( QWidget *,const QString& ) ;
-	static void instance( QWidget * ) ;
+	dialogok( QWidget * parent,bool,bool,const QString& title,const QString& msg ) ;
+	~dialogok() ;
+	int Show() ;
+private slots:
+	void ok() ;
+	void yes() ;
+	void no() ;
 private:
-	void show( const QByteArray&,const QByteArray& ) ;
-	QWidget * m_widget ;
-	bool m_autocheck ;
-	NetworkAccessManager m_networkAccessManager ;
-};
+	void closeEvent( QCloseEvent * ) ;
+	Ui::dialogok * m_ui ;
+} ;
 
-#endif // CHECKFORUPDATES_H
+#endif // DIALOGOK_H

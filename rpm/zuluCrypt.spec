@@ -17,7 +17,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 Name:           zuluCrypt
-Version:        5.0.2
+Version:        5.1.0
 Release:        0
 Summary:        Qt GUI front end to cryptsetup
 License:        GPL-2.0+
@@ -83,7 +83,7 @@ to easy opening and closing of volumes
 %build
 mkdir build
 cd build
-cmake -DCMAKE_INSTALL_PREFIX=/usr -DREUSEMOUNTPOINT=false -DUDEVSUPPORT=true -DNOGUI=false -DQT5=false -DHOMEMOUNTPREFIX=false -DNOGNOME=false -DNOKDE=false -DCMAKE_BUILD_TYPE=RELEASE ..
+cmake -DCMAKE_INSTALL_PREFIX=/usr -DREUSEMOUNTPOINT=false -DUDEVSUPPORT=true -DNOGUI=false -DQT5=true -DHOMEMOUNTPREFIX=false -DNOGNOME=false -DNOKDE=false -DCMAKE_BUILD_TYPE=RELEASE ..
 
 %install
 cd build

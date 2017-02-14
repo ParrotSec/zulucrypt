@@ -61,6 +61,7 @@
 #include <fcntl.h>
 
 #include <iostream>
+#include <atomic>
 
 namespace utility
 {
@@ -244,6 +245,7 @@ namespace utility
 	void removeFavoriteEntry( const QString& ) ;
 	bool pathExists( const QString& ) ;
 	bool canCreateFile( const QString& ) ;
+	void dropPrivileges( int = -1 ) ;
 	QString prettyfySpaceUsage( quint64 ) ;
 	QString resolvePath( const QString& ) ;
 	QString hashPath( const QByteArray& ) ;
@@ -277,6 +279,8 @@ namespace utility
 	QStringList split( const QString&,char token = '\n' ) ;
 	QStringList split( const QByteArray&,char token = '\n' ) ;
 	QStringList directoryList( const QString& ) ;
+	QStringList plainDmCryptOptions( void ) ;
+	QStringList supportedFileSystems( void ) ;
 	bool userHasGoodVersionOfWhirlpool( void ) ;
 	void licenseInfo( QWidget * ) ;
 	void showTrayIcon( QAction *,QSystemTrayIcon *,bool = true ) ;
@@ -308,7 +312,7 @@ namespace utility
 	QFont getFont( QWidget * ) ;
 	void saveFont( const QFont& ) ;
 
-	::Task::future< int >& clearVolume( const QString& volumePath,bool * exit,size_t size,std::function< void( int ) > ) ;
+	::Task::future< int >& clearVolume( const QString& volumePath,std::atomic_bool * exit,size_t size,std::function< void( int ) > ) ;
 	::Task::future< int >& exec( const QString& ) ;
 	::Task::future< QStringList >& luksEmptySlots( const QString& volumePath ) ;
 	::Task::future< QString >& getUUIDFromPath( const QString& ) ;
