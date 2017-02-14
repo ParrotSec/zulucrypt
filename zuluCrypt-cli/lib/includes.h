@@ -58,12 +58,14 @@ typedef struct{
 	const char * header_new_key ;
 	const char * header_new_key_source ;
 	uid_t uid ;
+	int veraCrypt_volume ;
+	int iteration_count ;
 	string_t ( *getKey )( int * ) ;
 }info_t ;
 
 typedef struct{
 	const char * device ;
-	const char * offset ;
+	const char * plain_dm_properties ;
 	const char * mapper_name ;
 	const char * key ;
 	const char * m_point ;
@@ -81,6 +83,7 @@ typedef struct{
 	int tcrypt_system ;
 	const char * const * tcrypt_keyfiles ;
 	unsigned long m_flags ;
+	void * variables ;
 }open_struct_t ;
 
 typedef struct{

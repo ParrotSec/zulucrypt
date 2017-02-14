@@ -325,6 +325,31 @@ void utility::createPlugInMenu( QMenu * menu,const QString& a,const QString& b,c
 	} ) ;
 }
 
+void utility::dropPrivileges( int uid )
+{
+	if( uid == -1 ){
+
+		uid = utility::getUserID() ;
+	}
+
+	if( uid != -1 ){
+
+		auto id = getpwuid( uid ) ;
+
+		if( id ){
+
+			setenv( "LOGNAME",id->pw_name,1 ) ;
+			setenv( "HOME",id->pw_dir,1 ) ;
+			setenv( "USER",id->pw_name,1 ) ;
+		}
+
+		Q_UNUSED( setgid( uid ) ) ;
+		Q_UNUSED( setgroups( 1,reinterpret_cast< const gid_t * >( &uid ) ) ) ;
+		Q_UNUSED( setegid( uid ) ) ;
+		Q_UNUSED( setuid( uid ) ) ;
+	}
+}
+
 static bool _execute_process( const QString& m,const QString& exe,const QString& env,int uid )
 {
 	Q_UNUSED( env ) ;
@@ -337,23 +362,7 @@ static bool _execute_process( const QString& m,const QString& exe,const QString&
 
 		}(),[ uid ](){
 
-			if( uid != -1 ){
-
-				auto id = getpwuid( uid ) ;
-
-				if( id ){
-
-					setenv( "LOGNAME",id->pw_name,1 ) ;
-					setenv( "HOME",id->pw_dir,1 ) ;
-					setenv( "USER",id->pw_name,1 ) ;
-				}
-
-				Q_UNUSED( setgid( uid ) ) ;
-				Q_UNUSED( setgroups( 1,reinterpret_cast< const gid_t * >( &uid ) ) ) ;
-				Q_UNUSED( setegid( uid ) ) ;
-				Q_UNUSED( setuid( uid ) ) ;
-
-			}
+			utility::dropPrivileges( uid ) ;
 
 			auto path = [](){
 
@@ -521,7 +530,7 @@ static bool _writeToVolume( int fd,const char * buffer,unsigned int bufferSize )
 	return write( fd,buffer,bufferSize ) != -1 ;
 }
 
-::Task::future< int >& utility::clearVolume( const QString& volume,bool * exit,size_t volumeSize,std::function< void( int ) > function )
+::Task::future< int >& utility::clearVolume( const QString& volume,std::atomic_bool * exit,size_t volumeSize,std::function< void( int ) > function )
 {
 	return ::Task::run<int>( [ volume,exit,volumeSize,function ](){
 
@@ -1208,9 +1217,14 @@ void utility::readFavorites( QMenu * m,bool truncate,bool showFolders )
 
 			m->addAction( _add_action( it ) ) ;
 		}else{
-			if( !utility::pathPointsToAFolder( utility::split( it,'\t' ).first() ) ){
+			auto e = utility::split( it,'\t' ).first() ;
 
-				m->addAction( _add_action( it ) ) ;
+			if( utility::pathExists( e ) ){
+
+				if( !utility::pathPointsToAFolder( e ) ){
+
+					m->addAction( _add_action( it ) ) ;
+				}
 			}
 		}
 	}
@@ -1934,4 +1948,65 @@ void utility::createFolderPath( const QString& e )
 
 	utility::changePathOwner( e ) ;
 	utility::changePathPermissions( e,0777 ) ;
+}
+
+QStringList utility::plainDmCryptOptions()
+{
+	const QByteArray _options = R"(aes.cbc-essiv:sha256.256.ripemd160
+aes.cbc-essiv:sha256.256.sha256
+aes.cbc-essiv:sha256.256.sha512
+aes.cbc-essiv:sha256.256.sha1
+aes.cbc-essiv:sha256.512.ripemd160
+aes.cbc-essiv:sha256.512.sha256
+aes.cbc-essiv:sha256.512.sha512
+aes.cbc-essiv:sha256.512.sha1
+aes.xts-plain64.256.ripemd160
+aes.xts-plain64.256.sha256
+aes.xts-plain64.256.sha512
+aes.xts-plain64.256.sha1
+aes.xts-plain64.512.ripemd160
+aes.xts-plain64.512.sha256
+aes.xts-plain64.512.sha512
+aes.xts-plain64.512.sha1)" ;
+
+	QFile f( utility::homePath() + "/.zuluCrypt/plainDmCryptOptions" ) ;
+
+	if( !f.exists() ){
+
+		if( f.open( QIODevice::WriteOnly ) ){
+
+			f.write( _options ) ;
+
+			f.close() ;
+		}
+	}
+
+	if( f.open( QIODevice::ReadOnly ) ){
+
+		return utility::split( f.readAll() ) ;
+	}
+
+	return QStringList() ;
+}
+
+QStringList utility::supportedFileSystems()
+{
+	QFile f( utility::homePath() + "/.zuluCrypt/supportedFileSystems" ) ;
+
+	if( !f.exists() ){
+
+		if( f.open( QIODevice::WriteOnly ) ){
+
+			f.write( "ext4\nvfat\nntfs\next2\next3\nexfat\nbtrfs" ) ;
+
+			f.close() ;
+		}
+	}
+
+	if( f.open( QIODevice::ReadOnly ) ){
+
+		return utility::split( f.readAll() ) ;
+	}
+
+	return { "ext4","vfat","ntfs","ext2","ext3","exfat","btrfs" } ;
 }
