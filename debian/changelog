@@ -1,3 +1,15 @@
+zulucrypt (5.1.0-1parrot1) testing; urgency=medium
+
+  * Add zulumount and sirikali to recommends
+
+ -- Lorenzo "Palinuro" Faletra <palinuro@parrotsec.org>  Thu, 23 Feb 2017 23:59:27 +0100
+
+zulucrypt (5.1.0-1parrot0) testing; urgency=medium
+
+  * Import new upstream release
+
+ -- Lorenzo "Palinuro" Faletra <palinuro@parrotsec.org>  Tue, 14 Feb 2017 13:51:18 +0100
+
 zulucrypt (5.0.2-2parrot0) testing; urgency=medium
 
   * Import debian patches

@@ -24,6 +24,15 @@ Homepage: http://mhogomchungu.github.io/zuluCrypt
 Vcs-Git: https://github.com/marciosouza20/zulucrypt.git
 Vcs-Browser: https://github.com/marciosouza20/zulucrypt.git
 
+Package: zulucrypt
+Architecture: all
+Depends: zulucrypt-gui, zulucrypt-cli
+Recommends: zulumount-gui, zulumount-cli, sirikali
+Description: tool for encrypting volumes
+ zulucrypt is a suite of applications for creating
+ and managing volumes encrypted with luks, plain,
+ truecrypt and veracrypt.
+
 Package: zulucrypt-cli
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
@@ -80,7 +89,7 @@ Description: graphical front end for zulumount-cli
  .
  zuluMount-gui can unlock cryfs, encfs, gocryptfs
  and ecryptfs.
- 
+
 
 Package: zulusafe-cli
 Architecture: any
