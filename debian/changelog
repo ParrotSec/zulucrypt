@@ -1,3 +1,9 @@
+zulucrypt (5.1.0-1parrot2) testing; urgency=medium
+
+  * Recompile with updated libraries.
+
+ -- Lorenzo "Palinuro" Faletra <palinuro@parrotsec.org>  Wed, 28 Jun 2017 18:21:29 +0200
+
 zulucrypt (5.1.0-1parrot1) testing; urgency=medium
 
   * Add zulumount and sirikali to recommends
